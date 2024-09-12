@@ -5,10 +5,14 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
   // Specifies the entry point of the application
-  entry: path.join(__dirname, "src", "index.js"),
+  entry: path.join(__dirname, "src", "index.tsx"),
   // Specifies where the bundled code should be generated
   output: {
+    filename: 'bundle.js',
     path: path.resolve(__dirname, "dist"),
+  },
+  resolve: {
+    extensions: ['.tsx','.ts','.js']
   },
   plugins: [
     new HtmlWebpackPlugin({
@@ -19,13 +23,13 @@ module.exports = {
     // Configures webpack to use Babel for transpiling JavaScript files
     rules: [
       {
-        test: /\.?js$/,
+        test: /\.(ts|tsx)$/,
         exclude: /node_modules/,
         use: {
-          loader: "babel-loader",
-          options: {
-            presets: ["@babel/preset-env", "@babel/preset-react"],
-          },
+          loader: "babel-loader"
+          // options: {
+          //   presets: ["@babel/preset-env", "@babel/preset-react"],
+          // },
         },
       },
       {
