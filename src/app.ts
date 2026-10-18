@@ -1,10 +1,10 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ConflictError, NotFoundError, ValidationError } from './errors.js';
 import { registerLabelRoutes } from './labels/label.controller.js';
-import { InMemoryLabelRepository } from './labels/label.repository.js';
+import type { ILabelRepository } from './labels/label.repository.js';
 import { LabelService } from './labels/label.service.js';
 import { registerTodoRoutes } from './todos/todo.controller.js';
-import { InMemoryTodoRepository } from './todos/todo.repository.js';
+import type { ITodoRepository } from './todos/todo.repository.js';
 import { TodoService } from './todos/todo.service.js';
 
 const statusByError = [
@@ -13,7 +13,12 @@ const statusByError = [
   [ConflictError, 409],
 ] as const;
 
-export const buildApp = (): FastifyInstance => {
+export interface IAppDependencies {
+  todoRepository: ITodoRepository;
+  labelRepository: ILabelRepository;
+}
+
+export const buildApp = ({ todoRepository, labelRepository }: IAppDependencies): FastifyInstance => {
   const app = Fastify({ logger: true });
 
   app.setErrorHandler((error, _req, reply) => {
@@ -22,9 +27,7 @@ export const buildApp = (): FastifyInstance => {
     return reply.send(error);
   });
 
-  // Composition root: repository -> service -> controller
-  const todoRepository = new InMemoryTodoRepository();
-  const labelRepository = new InMemoryLabelRepository();
+  // Composition root: services and controllers are wired onto the injected repositories
   registerTodoRoutes(app, new TodoService(todoRepository, labelRepository));
   registerLabelRoutes(app, new LabelService(labelRepository, todoRepository));
 

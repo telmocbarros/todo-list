@@ -1,16 +1,21 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
+import { createTestRepositories } from './test/repositories.js';
 
 describe('todo API', () => {
   let app: FastifyInstance;
+  let closeDatabase: () => void;
 
-  beforeEach(() => {
-    app = buildApp();
+  beforeEach(async () => {
+    const { close, ...repositories } = await createTestRepositories();
+    closeDatabase = close;
+    app = buildApp(repositories);
   });
 
   afterEach(async () => {
     await app.close();
+    closeDatabase();
   });
 
   const create = (payload: object) => app.inject({ method: 'POST', url: '/todos', payload });
