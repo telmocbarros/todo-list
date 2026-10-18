@@ -1,27 +1,26 @@
 import type { FastifyInstance } from 'fastify';
+import { idParams, type IdParams } from '../http.js';
+import { PRIORITIES } from './priority.js';
 import type { NewTodo, TodoPatch } from './todo.model.js';
 import type { TodoService } from './todo.service.js';
 
-interface IdParams {
-  id: string;
-}
-
-const idParams = {
-  type: 'object',
-  properties: { id: { type: 'string' } },
-  required: ['id'],
-} as const;
-
 const dueDate = { type: ['string', 'null'], format: 'date-time' } as const;
 
-const todoProperties = {
+const createProperties = {
   // At least one non-whitespace character
   title: { type: 'string', pattern: '\\S' },
-  completed: { type: 'boolean' },
+  description: { type: 'string' },
+  priority: { type: 'string', enum: PRIORITIES.map((p) => p.level) },
+  labelIds: { type: 'array', items: { type: 'string' } },
   dueDate,
 } as const;
 
+// New todos always start incomplete, so `completed` can only be changed afterwards
+const patchProperties = { ...createProperties, completed: { type: 'boolean' } } as const;
+
 export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): void => {
+  app.get('/priorities', async () => PRIORITIES);
+
   app.get('/todos', async () => service.list());
 
   app.get<{ Params: IdParams }>('/todos/:id', { schema: { params: idParams } }, async (req) =>
@@ -34,7 +33,7 @@ export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): 
       schema: {
         body: {
           type: 'object',
-          properties: { title: todoProperties.title, dueDate },
+          properties: createProperties,
           required: ['title'],
           additionalProperties: false,
         },
@@ -50,7 +49,7 @@ export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): 
         params: idParams,
         body: {
           type: 'object',
-          properties: todoProperties,
+          properties: patchProperties,
           minProperties: 1,
           additionalProperties: false,
         },

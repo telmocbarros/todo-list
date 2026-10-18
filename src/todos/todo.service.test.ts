@@ -1,14 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { NotFoundError } from '../errors.js';
+import { NotFoundError, ValidationError } from '../errors.js';
+import { InMemoryLabelRepository } from '../labels/label.repository.js';
 import { InMemoryTodoRepository } from './todo.repository.js';
 import { TodoService } from './todo.service.js';
 
 describe('TodoService', () => {
   let service: TodoService;
+  let labels: InMemoryLabelRepository;
 
   beforeEach(() => {
-    service = new TodoService(new InMemoryTodoRepository());
+    labels = new InMemoryLabelRepository();
+    service = new TodoService(new InMemoryTodoRepository(), labels);
   });
+
+  const addLabel = (id: string) => labels.save({ id, name: id, color: '#000000' });
 
   it('creates a todo with defaults', async () => {
     const todo = await service.create({ title: 'Buy milk' });
@@ -84,6 +89,52 @@ describe('TodoService', () => {
     it('is kept when not part of the update', async () => {
       const created = await service.create({ title: 'a', dueDate: '2030-01-01T00:00:00Z' });
       expect((await service.update(created.id, { completed: true })).dueDate).toBe(created.dueDate);
+    });
+  });
+
+  describe('description', () => {
+    it('defaults to an empty string', async () => {
+      expect((await service.create({ title: 'a' })).description).toBe('');
+    });
+
+    it('keeps UTF-8 text and emojis untouched', async () => {
+      const description = 'Café ☕ — 日本語 👨‍👩‍👧‍👦🎉';
+      const created = await service.create({ title: 'a', description });
+      expect(created.description).toBe(description);
+      expect((await service.update(created.id, { description: '🚀' })).description).toBe('🚀');
+    });
+  });
+
+  describe('priority', () => {
+    it('defaults to low', async () => {
+      expect((await service.create({ title: 'a' })).priority).toBe('low');
+    });
+
+    it('can be set on create and update', async () => {
+      const created = await service.create({ title: 'a', priority: 'medium' });
+      expect(created.priority).toBe('medium');
+      expect((await service.update(created.id, { priority: 'high' })).priority).toBe('high');
+    });
+  });
+
+  describe('labels', () => {
+    it('defaults to none', async () => {
+      expect((await service.create({ title: 'a' })).labelIds).toEqual([]);
+    });
+
+    it('can be set on create and replaced on update, without duplicates', async () => {
+      await addLabel('l1');
+      await addLabel('l2');
+      const created = await service.create({ title: 'a', labelIds: ['l1', 'l1'] });
+      expect(created.labelIds).toEqual(['l1']);
+      expect((await service.update(created.id, { labelIds: ['l2'] })).labelIds).toEqual(['l2']);
+      expect((await service.update(created.id, { labelIds: [] })).labelIds).toEqual([]);
+    });
+
+    it('rejects unknown labels', async () => {
+      await expect(service.create({ title: 'a', labelIds: ['nope'] })).rejects.toBeInstanceOf(ValidationError);
+      const created = await service.create({ title: 'a' });
+      await expect(service.update(created.id, { labelIds: ['nope'] })).rejects.toBeInstanceOf(ValidationError);
     });
   });
 });

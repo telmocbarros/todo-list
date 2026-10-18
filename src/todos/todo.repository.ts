@@ -5,6 +5,7 @@ export interface TodoRepository {
   findById(id: string): Promise<Todo | undefined>;
   save(todo: Todo): Promise<Todo>;
   delete(id: string): Promise<boolean>;
+  removeLabel(labelId: string): Promise<void>;
 }
 
 export class InMemoryTodoRepository implements TodoRepository {
@@ -25,5 +26,13 @@ export class InMemoryTodoRepository implements TodoRepository {
 
   async delete(id: string): Promise<boolean> {
     return this.todos.delete(id);
+  }
+
+  async removeLabel(labelId: string): Promise<void> {
+    for (const todo of this.todos.values()) {
+      if (todo.labelIds.includes(labelId)) {
+        this.todos.set(todo.id, { ...todo, labelIds: todo.labelIds.filter((id) => id !== labelId) });
+      }
+    }
   }
 }

@@ -1,22 +1,32 @@
 import Fastify, { type FastifyInstance } from 'fastify';
-import { NotFoundError } from './errors.js';
+import { ConflictError, NotFoundError, ValidationError } from './errors.js';
+import { registerLabelRoutes } from './labels/label.controller.js';
+import { InMemoryLabelRepository } from './labels/label.repository.js';
+import { LabelService } from './labels/label.service.js';
 import { registerTodoRoutes } from './todos/todo.controller.js';
 import { InMemoryTodoRepository } from './todos/todo.repository.js';
 import { TodoService } from './todos/todo.service.js';
+
+const statusByError = [
+  [NotFoundError, 404],
+  [ValidationError, 400],
+  [ConflictError, 409],
+] as const;
 
 export const buildApp = (): FastifyInstance => {
   const app = Fastify({ logger: true });
 
   app.setErrorHandler((error, _req, reply) => {
-    if (error instanceof NotFoundError) {
-      return reply.code(404).send({ error: error.message });
-    }
+    const match = statusByError.find(([type]) => error instanceof type);
+    if (match) return reply.code(match[1]).send({ error: (error as Error).message });
     return reply.send(error);
   });
 
   // Composition root: repository -> service -> controller
-  const service = new TodoService(new InMemoryTodoRepository());
-  registerTodoRoutes(app, service);
+  const todoRepository = new InMemoryTodoRepository();
+  const labelRepository = new InMemoryLabelRepository();
+  registerTodoRoutes(app, new TodoService(todoRepository, labelRepository));
+  registerLabelRoutes(app, new LabelService(labelRepository, todoRepository));
 
   return app;
 };
