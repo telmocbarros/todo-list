@@ -12,10 +12,13 @@ const idParams = {
   required: ['id'],
 } as const;
 
+const dueDate = { type: ['string', 'null'], format: 'date-time' } as const;
+
 const todoProperties = {
   // At least one non-whitespace character
   title: { type: 'string', pattern: '\\S' },
   completed: { type: 'boolean' },
+  dueDate,
 } as const;
 
 export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): void => {
@@ -31,7 +34,7 @@ export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): 
       schema: {
         body: {
           type: 'object',
-          properties: { title: todoProperties.title },
+          properties: { title: todoProperties.title, dueDate },
           required: ['title'],
           additionalProperties: false,
         },

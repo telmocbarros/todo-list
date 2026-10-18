@@ -59,4 +59,31 @@ describe('TodoService', () => {
     const updated = await service.update(created.id, { title: '  b ' });
     expect(updated.title).toBe('b');
   });
+
+  describe('due date', () => {
+    it('defaults to null', async () => {
+      expect((await service.create({ title: 'a' })).dueDate).toBeNull();
+    });
+
+    it('can be set on create, normalized to UTC', async () => {
+      const todo = await service.create({ title: 'a', dueDate: '2030-01-01T10:00:00+01:00' });
+      expect(todo.dueDate).toBe('2030-01-01T09:00:00.000Z');
+    });
+
+    it('can be set on update', async () => {
+      const created = await service.create({ title: 'a' });
+      const updated = await service.update(created.id, { dueDate: '2030-01-01T00:00:00Z' });
+      expect(updated.dueDate).toBe('2030-01-01T00:00:00.000Z');
+    });
+
+    it('can be cleared with null', async () => {
+      const created = await service.create({ title: 'a', dueDate: '2030-01-01T00:00:00Z' });
+      expect((await service.update(created.id, { dueDate: null })).dueDate).toBeNull();
+    });
+
+    it('is kept when not part of the update', async () => {
+      const created = await service.create({ title: 'a', dueDate: '2030-01-01T00:00:00Z' });
+      expect((await service.update(created.id, { completed: true })).dueDate).toBe(created.dueDate);
+    });
+  });
 });

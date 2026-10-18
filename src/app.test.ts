@@ -67,4 +67,37 @@ describe('todo API', () => {
     const res = await app.inject({ method: 'PATCH', url: `/todos/${id}`, payload: { title: '  ' } });
     expect(res.statusCode).toBe(400);
   });
+
+  describe('due date', () => {
+    const due = '2030-01-01T00:00:00.000Z';
+
+    it('POST /todos accepts a dueDate', async () => {
+      const res = await create({ title: 'a', dueDate: due });
+      expect(res.statusCode).toBe(201);
+      expect(res.json().dueDate).toBe(due);
+    });
+
+    it('defaults dueDate to null', async () => {
+      expect((await create({ title: 'a' })).json().dueDate).toBeNull();
+    });
+
+    it('rejects an invalid dueDate (400)', async () => {
+      expect((await create({ title: 'a', dueDate: 'tomorrow' })).statusCode).toBe(400);
+    });
+
+    it('PATCH sets and clears dueDate', async () => {
+      const { id } = (await create({ title: 'a' })).json();
+      const set = await app.inject({ method: 'PATCH', url: `/todos/${id}`, payload: { dueDate: due } });
+      expect(set.json().dueDate).toBe(due);
+      const cleared = await app.inject({ method: 'PATCH', url: `/todos/${id}`, payload: { dueDate: null } });
+      expect(cleared.statusCode).toBe(200);
+      expect(cleared.json().dueDate).toBeNull();
+    });
+
+    it('PATCH rejects an invalid dueDate (400)', async () => {
+      const { id } = (await create({ title: 'a' })).json();
+      const res = await app.inject({ method: 'PATCH', url: `/todos/${id}`, payload: { dueDate: 'nope' } });
+      expect(res.statusCode).toBe(400);
+    });
+  });
 });
