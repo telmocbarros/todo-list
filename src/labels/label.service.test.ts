@@ -1,21 +1,23 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ConflictError, NotFoundError } from '../errors.js';
-import { InMemoryTodoRepository } from '../todos/todo.repository.js';
+import { createTestRepositories } from '../test/repositories.js';
 import { TodoService } from '../todos/todo.service.js';
-import { InMemoryLabelRepository } from './label.repository.js';
 import { LabelService } from './label.service.js';
 
 describe('LabelService', () => {
   const color = '#000000';
   let service: LabelService;
   let todos: TodoService;
+  let closeDatabase: () => void;
 
-  beforeEach(() => {
-    const labelRepository = new InMemoryLabelRepository();
-    const todoRepository = new InMemoryTodoRepository();
+  beforeEach(async () => {
+    const { todoRepository, labelRepository, close } = await createTestRepositories();
+    closeDatabase = close;
     service = new LabelService(labelRepository, todoRepository);
     todos = new TodoService(todoRepository, labelRepository);
   });
+
+  afterEach(() => closeDatabase());
 
   it('creates a label with a trimmed name and the given color', async () => {
     const label = await service.create({ name: '  Work ', color: '#00ff00' });

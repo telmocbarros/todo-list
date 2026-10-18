@@ -1,17 +1,22 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NotFoundError, ValidationError } from '../errors.js';
-import { InMemoryLabelRepository } from '../labels/label.repository.js';
-import { InMemoryTodoRepository } from './todo.repository.js';
+import type { ILabelRepository } from '../labels/label.repository.js';
+import { createTestRepositories } from '../test/repositories.js';
 import { TodoService } from './todo.service.js';
 
 describe('TodoService', () => {
   let service: TodoService;
-  let labels: InMemoryLabelRepository;
+  let labels: ILabelRepository;
+  let closeDatabase: () => void;
 
-  beforeEach(() => {
-    labels = new InMemoryLabelRepository();
-    service = new TodoService(new InMemoryTodoRepository(), labels);
+  beforeEach(async () => {
+    const { todoRepository, labelRepository, close } = await createTestRepositories();
+    labels = labelRepository;
+    closeDatabase = close;
+    service = new TodoService(todoRepository, labels);
   });
+
+  afterEach(() => closeDatabase());
 
   const addLabel = (id: string) => labels.save({ id, name: id, color: '#000000' });
 
