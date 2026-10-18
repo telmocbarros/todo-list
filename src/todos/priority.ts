@@ -1,15 +1,15 @@
-export type Priority = 'low' | 'medium' | 'high';
-export type PriorityColor = 'green' | 'yellow' | 'red';
+export type TPriority = 'low' | 'medium' | 'high';
+export type TPriorityColor = 'green' | 'yellow' | 'red';
 
-export interface PriorityDefinition {
-  level: Priority;
-  color: PriorityColor;
+export interface IPriorityDefinition {
+  level: TPriority;
+  color: TPriorityColor;
 }
 
-export const PRIORITIES: readonly PriorityDefinition[] = [
+export const PRIORITIES: readonly IPriorityDefinition[] = [
   { level: 'low', color: 'green' },
   { level: 'medium', color: 'yellow' },
   { level: 'high', color: 'red' },
 ];
 
-export const DEFAULT_PRIORITY: Priority = 'low';
+export const DEFAULT_PRIORITY: TPriority = 'low';

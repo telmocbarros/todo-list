@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { idParams, type IdParams } from '../http.js';
-import type { LabelPatch, NewLabel } from './label.model.js';
+import { idParams, type IIdParams } from '../http.js';
+import type { CreateLabelDTO, UpdateLabelDTO } from './label.dto.js';
 import type { LabelService } from './label.service.js';
 
 const labelProperties = {
@@ -13,11 +13,11 @@ const labelProperties = {
 export const registerLabelRoutes = (app: FastifyInstance, service: LabelService): void => {
   app.get('/labels', async () => service.list());
 
-  app.get<{ Params: IdParams }>('/labels/:id', { schema: { params: idParams } }, async (req) =>
+  app.get<{ Params: IIdParams }>('/labels/:id', { schema: { params: idParams } }, async (req) =>
     service.get(req.params.id),
   );
 
-  app.post<{ Body: NewLabel }>(
+  app.post<{ Body: CreateLabelDTO }>(
     '/labels',
     {
       schema: {
@@ -32,7 +32,7 @@ export const registerLabelRoutes = (app: FastifyInstance, service: LabelService)
     async (req, reply) => reply.code(201).send(await service.create(req.body)),
   );
 
-  app.patch<{ Params: IdParams; Body: LabelPatch }>(
+  app.patch<{ Params: IIdParams; Body: UpdateLabelDTO }>(
     '/labels/:id',
     {
       schema: {
@@ -48,7 +48,7 @@ export const registerLabelRoutes = (app: FastifyInstance, service: LabelService)
     async (req) => service.update(req.params.id, req.body),
   );
 
-  app.delete<{ Params: IdParams }>('/labels/:id', { schema: { params: idParams } }, async (req, reply) => {
+  app.delete<{ Params: IIdParams }>('/labels/:id', { schema: { params: idParams } }, async (req, reply) => {
     await service.remove(req.params.id);
     return reply.code(204).send();
   });

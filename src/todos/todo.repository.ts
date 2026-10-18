@@ -1,25 +1,25 @@
-import type { Todo } from './todo.model.js';
+import type { TodoModel } from './todo.model.js';
 
-export interface TodoRepository {
-  findAll(): Promise<Todo[]>;
-  findById(id: string): Promise<Todo | undefined>;
-  save(todo: Todo): Promise<Todo>;
+export interface ITodoRepository {
+  findAll(): Promise<TodoModel[]>;
+  findById(id: string): Promise<TodoModel | undefined>;
+  save(todo: TodoModel): Promise<TodoModel>;
   delete(id: string): Promise<boolean>;
   removeLabel(labelId: string): Promise<void>;
 }
 
-export class InMemoryTodoRepository implements TodoRepository {
-  private readonly todos = new Map<string, Todo>();
+export class InMemoryTodoRepository implements ITodoRepository {
+  private readonly todos = new Map<string, TodoModel>();
 
-  async findAll(): Promise<Todo[]> {
+  async findAll(): Promise<TodoModel[]> {
     return [...this.todos.values()];
   }
 
-  async findById(id: string): Promise<Todo | undefined> {
+  async findById(id: string): Promise<TodoModel | undefined> {
     return this.todos.get(id);
   }
 
-  async save(todo: Todo): Promise<Todo> {
+  async save(todo: TodoModel): Promise<TodoModel> {
     this.todos.set(todo.id, todo);
     return todo;
   }

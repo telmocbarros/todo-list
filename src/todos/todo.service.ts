@@ -1,17 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { NotFoundError, ValidationError } from '../errors.js';
-import type { LabelRepository } from '../labels/label.repository.js';
+import type { ILabelRepository } from '../labels/label.repository.js';
 import { DEFAULT_PRIORITY } from './priority.js';
-import type { NewTodo, Todo, TodoPatch } from './todo.model.js';
-import type { TodoRepository } from './todo.repository.js';
+import type { CreateTodoDTO, UpdateTodoDTO } from './todo.dto.js';
+import type { TodoModel } from './todo.model.js';
+import type { ITodoRepository } from './todo.repository.js';
 
 const normalizeDate = (date: string | null | undefined): string | null =>
   date ? new Date(date).toISOString() : null;
 
 export class TodoService {
   constructor(
-    private readonly repository: TodoRepository,
-    private readonly labels: LabelRepository,
+    private readonly repository: ITodoRepository,
+    private readonly labels: ILabelRepository,
   ) {}
 
   private async resolveLabelIds(labelIds: string[]): Promise<string[]> {
@@ -22,17 +23,17 @@ export class TodoService {
     return unique;
   }
 
-  list(): Promise<Todo[]> {
+  list(): Promise<TodoModel[]> {
     return this.repository.findAll();
   }
 
-  async get(id: string): Promise<Todo> {
+  async get(id: string): Promise<TodoModel> {
     const todo = await this.repository.findById(id);
     if (!todo) throw new NotFoundError('Todo');
     return todo;
   }
 
-  async create({ title, description = '', priority = DEFAULT_PRIORITY, labelIds = [], dueDate }: NewTodo): Promise<Todo> {
+  async create({ title, description = '', priority = DEFAULT_PRIORITY, labelIds = [], dueDate }: CreateTodoDTO): Promise<TodoModel> {
     const resolvedLabelIds = await this.resolveLabelIds(labelIds);
     const now = new Date().toISOString();
     return this.repository.save({
@@ -48,7 +49,7 @@ export class TodoService {
     });
   }
 
-  async update(id: string, patch: TodoPatch): Promise<Todo> {
+  async update(id: string, patch: UpdateTodoDTO): Promise<TodoModel> {
     const existing = await this.get(id);
     const title = patch.title?.trim();
     const labelIds = patch.labelIds && (await this.resolveLabelIds(patch.labelIds));

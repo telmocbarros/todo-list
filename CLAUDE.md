@@ -28,3 +28,4 @@ A Fastify REST API for todos (`/todos`) and user-defined labels (`/labels`), plu
 
 - ESM project (`"type": "module"`, `NodeNext` resolution): relative imports must use the `.js` extension, even though the sources are `.ts` (e.g. `import { buildApp } from './app.js'`).
 - TypeScript is `strict`; ES2022 target.
+- Naming: interfaces are prefixed `I` (`ITodoRepository`), type aliases `T` (`TPriority`), entity models end in `Model` (`TodoModel`, an interface without the `I`), and request-body shapes end in `DTO` (`CreateTodoDTO`). Implementation classes use neutral names (`PersistentTodoRepository`), never the database or ORM name.

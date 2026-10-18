@@ -1,4 +1,4 @@
-export interface IdParams {
+export interface IIdParams {
   id: string;
 }
 

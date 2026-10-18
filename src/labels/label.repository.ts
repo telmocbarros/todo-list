@@ -1,30 +1,30 @@
-import type { Label } from './label.model.js';
+import type { LabelModel } from './label.model.js';
 
-export interface LabelRepository {
-  findAll(): Promise<Label[]>;
-  findById(id: string): Promise<Label | undefined>;
-  findByName(name: string): Promise<Label | undefined>;
-  save(label: Label): Promise<Label>;
+export interface ILabelRepository {
+  findAll(): Promise<LabelModel[]>;
+  findById(id: string): Promise<LabelModel | undefined>;
+  findByName(name: string): Promise<LabelModel | undefined>;
+  save(label: LabelModel): Promise<LabelModel>;
   delete(id: string): Promise<boolean>;
 }
 
-export class InMemoryLabelRepository implements LabelRepository {
-  private readonly labels = new Map<string, Label>();
+export class InMemoryLabelRepository implements ILabelRepository {
+  private readonly labels = new Map<string, LabelModel>();
 
-  async findAll(): Promise<Label[]> {
+  async findAll(): Promise<LabelModel[]> {
     return [...this.labels.values()];
   }
 
-  async findById(id: string): Promise<Label | undefined> {
+  async findById(id: string): Promise<LabelModel | undefined> {
     return this.labels.get(id);
   }
 
-  async findByName(name: string): Promise<Label | undefined> {
+  async findByName(name: string): Promise<LabelModel | undefined> {
     const lower = name.toLowerCase();
     return [...this.labels.values()].find((label) => label.name.toLowerCase() === lower);
   }
 
-  async save(label: Label): Promise<Label> {
+  async save(label: LabelModel): Promise<LabelModel> {
     this.labels.set(label.id, label);
     return label;
   }

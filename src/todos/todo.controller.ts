@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { idParams, type IdParams } from '../http.js';
+import { idParams, type IIdParams } from '../http.js';
 import { PRIORITIES } from './priority.js';
-import type { NewTodo, TodoPatch } from './todo.model.js';
+import type { CreateTodoDTO, UpdateTodoDTO } from './todo.dto.js';
 import type { TodoService } from './todo.service.js';
 
 const dueDate = { type: ['string', 'null'], format: 'date-time' } as const;
@@ -23,11 +23,11 @@ export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): 
 
   app.get('/todos', async () => service.list());
 
-  app.get<{ Params: IdParams }>('/todos/:id', { schema: { params: idParams } }, async (req) =>
+  app.get<{ Params: IIdParams }>('/todos/:id', { schema: { params: idParams } }, async (req) =>
     service.get(req.params.id),
   );
 
-  app.post<{ Body: NewTodo }>(
+  app.post<{ Body: CreateTodoDTO }>(
     '/todos',
     {
       schema: {
@@ -42,7 +42,7 @@ export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): 
     async (req, reply) => reply.code(201).send(await service.create(req.body)),
   );
 
-  app.patch<{ Params: IdParams; Body: TodoPatch }>(
+  app.patch<{ Params: IIdParams; Body: UpdateTodoDTO }>(
     '/todos/:id',
     {
       schema: {
@@ -58,7 +58,7 @@ export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): 
     async (req) => service.update(req.params.id, req.body),
   );
 
-  app.delete<{ Params: IdParams }>('/todos/:id', { schema: { params: idParams } }, async (req, reply) => {
+  app.delete<{ Params: IIdParams }>('/todos/:id', { schema: { params: idParams } }, async (req, reply) => {
     await service.remove(req.params.id);
     return reply.code(204).send();
   });
