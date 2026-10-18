@@ -12,10 +12,13 @@ There is no test runner or linter configured yet. The server listens on `PORT` (
 
 ## Architecture
 
-A Fastify REST API for todos (CRUD under `/todos`), with data held in an in-memory `Map`, so state is lost on restart.
+A Fastify REST API for todos (CRUD under `/todos`), layered as controller → service → repository. Data is held in an in-memory `Map`, so state is lost on restart.
 
-- `src/todos.ts` — `Todo` type and the store. All data access lives here; swapping in a real database should only require changing this file.
-- `src/app.ts` — `buildApp()` creates the Fastify instance and registers the routes. It does not listen, so it can be used in tests via `app.inject()`. Request validation uses Fastify JSON schemas inline on each route. Updates use `PATCH` (partial), not `PUT`.
+- `src/todos/todo.controller.ts` — HTTP layer: `registerTodoRoutes(app, service)` declares routes and JSON-schema validation, and calls the service. No business logic. Updates use `PATCH` (partial), not `PUT`.
+- `src/todos/todo.service.ts` — business logic (id/timestamp generation, not-found handling). Depends on the `TodoRepository` interface, and throws `NotFoundError` (`src/errors.ts`) rather than touching HTTP.
+- `src/todos/todo.repository.ts` — `TodoRepository` interface plus `InMemoryTodoRepository`. To add a real database, implement the interface and swap it in `app.ts`.
+- `src/todos/todo.model.ts` — `Todo` and input types.
+- `src/app.ts` — composition root: `buildApp()` wires repository → service → controller and maps `NotFoundError` to 404 in the error handler. It does not listen, so tests can use `app.inject()`.
 - `src/server.ts` — entry point; calls `buildApp()` and `listen()` on `0.0.0.0`.
 
 ## Conventions
