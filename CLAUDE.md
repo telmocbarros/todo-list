@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run dev` — run the server with auto-reload (`tsx watch src/server.ts`)
 - `npm run build` — compile TypeScript to `dist/`; `npm start` runs the compiled output
 - `npm run typecheck` — `tsc --noEmit`
+- `npm test` — run Vitest once; `npm run test:watch` for watch mode; single file/test: `npx vitest run src/app.test.ts -t "<name>"`
 
-There is no test runner or linter configured yet. The server listens on `PORT` (default 3000).
+There is no linter configured yet. Tests are colocated as `src/**/*.test.ts`, and the project is developed test-first (write the failing test, then the implementation). The server listens on `PORT` (default 3000).
 
 ## Architecture
 

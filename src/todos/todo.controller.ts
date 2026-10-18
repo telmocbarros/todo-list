@@ -13,7 +13,8 @@ const idParams = {
 } as const;
 
 const todoProperties = {
-  title: { type: 'string', minLength: 1 },
+  // At least one non-whitespace character
+  title: { type: 'string', pattern: '\\S' },
   completed: { type: 'boolean' },
 } as const;
 
@@ -30,7 +31,7 @@ export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): 
       schema: {
         body: {
           type: 'object',
-          properties: todoProperties,
+          properties: { title: todoProperties.title },
           required: ['title'],
           additionalProperties: false,
         },

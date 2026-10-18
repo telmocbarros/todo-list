@@ -16,14 +16,26 @@ export class TodoService {
     return todo;
   }
 
-  create({ title, completed = false }: NewTodo): Promise<Todo> {
+  create({ title }: NewTodo): Promise<Todo> {
     const now = new Date().toISOString();
-    return this.repository.save({ id: randomUUID(), title, completed, createdAt: now, updatedAt: now });
+    return this.repository.save({
+      id: randomUUID(),
+      title: title.trim(),
+      completed: false,
+      createdAt: now,
+      updatedAt: now,
+    });
   }
 
   async update(id: string, patch: TodoPatch): Promise<Todo> {
     const existing = await this.get(id);
-    return this.repository.save({ ...existing, ...patch, updatedAt: new Date().toISOString() });
+    const title = patch.title?.trim();
+    return this.repository.save({
+      ...existing,
+      ...patch,
+      ...(title !== undefined && { title }),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
   async remove(id: string): Promise<void> {
