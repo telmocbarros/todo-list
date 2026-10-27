@@ -2,16 +2,16 @@ import { readFileSync } from 'node:fs';
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createDatabase } from './db/client.js';
-import { PersistentLabelRepository } from './labels/persistent-label.repository.js';
-import { PersistentTodoRepository } from './todos/persistent-todo.repository.js';
+import { LabelRepository } from './labels/label.repository.js';
+import { TodoRepository } from './todos/todo.repository.js';
 
 const { port, databasePath, tls, trustProxy } = loadConfig(process.env);
 
 const { db, close } = await createDatabase(databasePath);
 const app = buildApp(
   {
-    todoRepository: new PersistentTodoRepository(db),
-    labelRepository: new PersistentLabelRepository(db),
+    todoRepository: new TodoRepository(db),
+    labelRepository: new LabelRepository(db),
   },
   {
     trustProxy,

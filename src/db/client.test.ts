@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { PersistentLabelRepository } from '../labels/persistent-label.repository.js';
-import { PersistentTodoRepository } from '../todos/persistent-todo.repository.js';
+import { LabelRepository } from '../labels/label.repository.js';
+import { TodoRepository } from '../todos/todo.repository.js';
 import { createDatabase } from './client.js';
 
 describe('createDatabase', () => {
@@ -21,8 +21,8 @@ describe('createDatabase', () => {
     const path = join(dir, 'nested', 'todo.db');
 
     const first = await createDatabase(path);
-    await new PersistentLabelRepository(first.db).save({ id: 'l1', name: 'Work', color: '#000000' });
-    await new PersistentTodoRepository(first.db).save({
+    await new LabelRepository(first.db).save({ id: 'l1', name: 'Work', color: '#000000' });
+    await new TodoRepository(first.db).save({
       id: 't1',
       title: 'Persisted',
       description: '',
@@ -36,7 +36,7 @@ describe('createDatabase', () => {
     first.close();
 
     const second = await createDatabase(path);
-    expect(await new PersistentTodoRepository(second.db).findById('t1')).toMatchObject({
+    expect(await new TodoRepository(second.db).findById('t1')).toMatchObject({
       title: 'Persisted',
       labelIds: ['l1'],
     });
@@ -56,7 +56,7 @@ describe('createDatabase', () => {
       createdAt: '2030-01-01T00:00:00.000Z',
       updatedAt: '2030-01-01T00:00:00.000Z',
     };
-    await expect(new PersistentTodoRepository(db).save(todo)).rejects.toThrow();
+    await expect(new TodoRepository(db).save(todo)).rejects.toThrow();
     close();
   });
 });
