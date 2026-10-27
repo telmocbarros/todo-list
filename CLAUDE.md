@@ -17,6 +17,8 @@ Configuration comes from environment variables, parsed and validated in `src/con
 - `TLS_KEY_PATH` + `TLS_CERT_PATH` — serve HTTPS directly; they must be set together or startup fails. Leave both unset when a reverse proxy or the host terminates TLS (the usual deployment).
 - `TRUST_PROXY=true` — trust `X-Forwarded-*` headers so `req.ip` is the real client. Enable only behind a proxy you control, since otherwise clients can spoof their address.
 
+`ROADMAP.md` records the planned phases (users and session auth, ownership scoping, completed-task history, per-user settings, audit trail, infrastructure) and the decisions behind their order.
+
 ## Architecture
 
 A Fastify REST API for todos (`/todos`) and user-defined labels (`/labels`), plus a read-only `/priorities`. Each resource is layered as controller → service → repository.
