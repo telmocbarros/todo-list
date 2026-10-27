@@ -18,8 +18,18 @@ export interface IAppDependencies {
   labelRepository: ILabelRepository;
 }
 
-export const buildApp = ({ todoRepository, labelRepository }: IAppDependencies): FastifyInstance => {
-  const app = Fastify({ logger: true });
+export interface IAppOptions {
+  /** Serve HTTPS directly. Omit when TLS is terminated by a proxy or the hosting platform. */
+  https?: { key: Buffer; cert: Buffer };
+  /** Trust X-Forwarded-* headers from a reverse proxy, so `req.ip` is the real client. */
+  trustProxy?: boolean;
+}
+
+export const buildApp = (
+  { todoRepository, labelRepository }: IAppDependencies,
+  { https, trustProxy = false }: IAppOptions = {},
+): FastifyInstance => {
+  const app = Fastify({ logger: true, trustProxy, ...(https && { https }) });
 
   app.setErrorHandler((error, _req, reply) => {
     const match = statusByError.find(([type]) => error instanceof type);

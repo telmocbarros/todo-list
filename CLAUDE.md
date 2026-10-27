@@ -12,6 +12,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 There is no linter configured yet. Tests are colocated as `src/**/*.test.ts`, and the project is developed test-first (write the failing test, then the implementation). The server listens on `PORT` (default 3000) and stores data in the SQLite file at `DATABASE_PATH` (default `./data/todo-list.db`, git-ignored).
 
+Configuration comes from environment variables, parsed and validated in `src/config.ts` (`loadConfig`):
+- `PORT`, `DATABASE_PATH` as above.
+- `TLS_KEY_PATH` + `TLS_CERT_PATH` — serve HTTPS directly; they must be set together or startup fails. Leave both unset when a reverse proxy or the host terminates TLS (the usual deployment).
+- `TRUST_PROXY=true` — trust `X-Forwarded-*` headers so `req.ip` is the real client. Enable only behind a proxy you control, since otherwise clients can spoof their address.
+
 ## Architecture
 
 A Fastify REST API for todos (`/todos`) and user-defined labels (`/labels`), plus a read-only `/priorities`. Each resource is layered as controller → service → repository.
@@ -23,8 +28,8 @@ A Fastify REST API for todos (`/todos`) and user-defined labels (`/labels`), plu
 - `src/todos/todo.model.ts` — `TodoModel`; `todo.dto.ts` — request shapes `CreateTodoDTO`/`UpdateTodoDTO`. Labels follow the same pattern (`LabelModel`, `label.dto.ts`).
 - `src/todos/priority.ts` — the fixed in-memory priority levels (`low`/green, `medium`/yellow, `high`/red); not a user-managed resource. Todos default to `low`.
 - `src/labels/` — same controller/service/repository split for labels (unique case-insensitive name, required hex colour). Todos reference labels by `labelIds`; `TodoService` rejects unknown ids, and `LabelService.remove` detaches the label from all todos via `ITodoRepository.removeLabel`.
-- `src/app.ts` — composition root: `buildApp({ todoRepository, labelRepository })` takes the repositories as arguments (there is deliberately no default) and wires them → services → controllers and maps `NotFoundError`/`ValidationError`/`ConflictError` to 404/400/409 in the error handler. It does not listen, so tests can use `app.inject()`.
-- `src/server.ts` — entry point; opens the database, calls `buildApp()` with the Drizzle repositories, closes the DB on SIGINT/SIGTERM, and `listen()`s on `0.0.0.0`.
+- `src/app.ts` — composition root: `buildApp({ todoRepository, labelRepository }, { https?, trustProxy? })` takes the repositories (and optional transport settings) as arguments (there is deliberately no default) and wires them → services → controllers and maps `NotFoundError`/`ValidationError`/`ConflictError` to 404/400/409 in the error handler. It does not listen, so tests can use `app.inject()`.
+- `src/server.ts` — entry point; loads the config, opens the database, calls `buildApp()` with the Drizzle repositories, closes the DB on SIGINT/SIGTERM, and `listen()`s on `0.0.0.0`.
 
 ## Conventions
 
