@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { buildApp } from './app.js';
+import { SessionRepository } from './auth/session.repository.js';
 import { loadConfig } from './config.js';
 import { createDatabase } from './db/client.js';
 import { LabelRepository } from './labels/label.repository.js';
 import { TodoRepository } from './todos/todo.repository.js';
+import { UserRepository } from './users/user.repository.js';
 
 const { port, databasePath, tls, trustProxy } = loadConfig(process.env);
 
@@ -12,6 +14,8 @@ const app = buildApp(
   {
     todoRepository: new TodoRepository(db),
     labelRepository: new LabelRepository(db),
+    userRepository: new UserRepository(db),
+    sessionRepository: new SessionRepository(db),
   },
   {
     trustProxy,
