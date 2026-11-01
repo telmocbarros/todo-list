@@ -12,6 +12,8 @@ Each phase follows the workflow in `CLAUDE.md`: failing tests first, then the im
 | --- | --- |
 | Authentication | Password + server-side session in a cookie, so sessions can be revoked |
 | Session lifetime | 7 days idle timeout, 30 days absolute cap |
+| CSRF | An origin check on writes (`Sec-Fetch-Site`, `Origin`), not tokens |
+| Rate limiting | Per IP; our own sliding window log or the plugin, behind `RATE_LIMITER` |
 | Password hashing | argon2id, with a startup smoke test because it is a native module |
 | Email | A free-tier provider over SMTP behind an `IEmailSender` interface; the console in development and tests |
 | Duplicate signup | One generic message for a taken email or username |
@@ -53,8 +55,10 @@ Accounts, so there is someone to own data.
 - [x] Session cookie via `@fastify/cookie`, with `HttpOnly`, `Secure` and `SameSite=Lax` set.
 - [x] A `requireUser` hook that loads the session and puts the user on the request. Controllers read it with `currentUser(req)` and pass the id to services.
 - [x] Add `UnauthorizedError` (401) to `src/errors.ts` and to the `statusByError` table in `src/app.ts`.
-- [ ] `ForbiddenError` (403), deferred to phase 3, where it gets its first use. Until then the todo and label routes stay open, so that their tests change once, together with ownership.
-- [ ] CSRF protection, which cookie auth requires, and a rate limit on login (see phase 7 for which limiter).
+- [x] `ForbiddenError` (403), first used by the CSRF check. The todo and label routes still stay open until phase 3, so that their tests change once, together with ownership.
+- [x] CSRF protection, as a second layer under `SameSite=Lax` cookies and JSON-only bodies: writes the browser marks as cross-site (`Sec-Fetch-Site`, or a foreign `Origin` on older browsers) get 403. Clients sending neither header, such as curl, are allowed. `ALLOWED_ORIGINS` lets a UI on another origin through.
+- [x] Rate limits per IP: login 10 per 15 minutes, signup 5 per hour. 429 with `Retry-After`, checked before the body is parsed or a password is hashed.
+- [x] Our own sliding-window limiter next to `@fastify/rate-limit`, chosen by `RATE_LIMITER` (`plugin` by default). Brought forward from phase 7 because login needed a limit; the same tests run against both.
 - [x] Login does the same work whether or not the account exists: when no user is found it still verifies the password against a fixed dummy hash, and every failure returns one generic "invalid email or password". Without this, an unknown email answers in about 1 ms and a wrong password in about 15 ms, which tells an attacker which emails are registered.
 - [ ] Known gap until phase 2: a duplicate signup returns before hashing the password, so it is faster than a real signup. Phase 2 closes it by making signup answer identically.
 
@@ -87,7 +91,7 @@ Sending email, and the two flows that depend on it. It also closes the account-e
 
 **Open decision** — whether an unverified user may log in at all, or only after verifying. Stricter is safer; looser is friendlier.
 
-**Risk** — these endpoints send mail, so they are an abuse target. They need rate limiting before they ship, so the basic limiter from phase 7 must land with this phase or a plugin-based one stands in until then.
+**Risk** — these endpoints send mail, so they are an abuse target. They need rate limiting before they ship: add them to `RATE_LIMITS` in `src/rate-limit/rate-limit.ts`, which both limiters already read.
 
 ---
 
@@ -179,7 +183,8 @@ Not features, but the difference between code that works and an app that can be 
 - [ ] CI running typecheck, lint and tests on push and pull requests.
 - [ ] `GET /health` for liveness, plus a readiness check that pings the database.
 - [ ] Security headers and CORS with an explicit origin allowlist for the future UI.
-- [ ] Rate limiting, as a deliberate learning exercise: write our own limiter (fixed window or token bucket, in memory) behind an `ITodoRepository`-style interface, with a config flag choosing ours or the battle-tested plugin. Default to the plugin; ours exists to understand the mechanics and to be swapped in knowingly. In-memory state is fine here because the app runs as a single instance anyway, which SQLite's single writer already requires.
+- [x] Our own rate limiter next to the plugin, chosen by a config flag: done in phase 1, as a sliding window log. In-memory state is fine because the app runs as a single instance anyway, which SQLite's single writer already requires.
+- [ ] A global rate limit across all routes, beyond the login and signup limits.
 - [ ] A multi-stage `Dockerfile`: non-root user, `/data` volume, `DATABASE_PATH` pointing into it, `migrations/` copied in, and a `.dockerignore` excluding `node_modules`, `dist` and `data`.
 - [ ] Backups streaming the SQLite file to object storage, so losing the volume is not losing the data.
 - [ ] API docs from the route schemas, which already exist, so this is nearly free.

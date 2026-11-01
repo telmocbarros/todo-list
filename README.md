@@ -33,6 +33,8 @@ Settings come from environment variables. All are optional.
 | `DATABASE_PATH` | `./data/todo-list.db` | Location of the SQLite file. The folder is created if missing |
 | `TLS_KEY_PATH`, `TLS_CERT_PATH` | unset | Serve HTTPS directly. Set both or neither |
 | `TRUST_PROXY` | `false` | Set to `true` behind a reverse proxy you control, so the real client address is used |
+| `ALLOWED_ORIGINS` | none | Comma-separated origins, such as `https://app.example.com`, allowed to send writes from another site |
+| `RATE_LIMITER` | `plugin` | `plugin` uses `@fastify/rate-limit`; `custom` uses the project's own sliding-window limiter |
 
 When a reverse proxy or your hosting platform handles HTTPS (the usual setup), leave the TLS variables unset and the app serves plain HTTP behind it.
 
@@ -61,6 +63,8 @@ All request and response bodies are JSON. Dates are ISO 8601 strings in UTC.
 Signup takes `email`, `username` (3 to 32 letters, digits, `.`, `-` or `_`), `firstName`, `lastName` (each up to 100 characters) and `password` (12 to 128 characters). Passwords are stored as argon2id hashes and never returned.
 
 Signing in sets an `HttpOnly`, `Secure`, `SameSite=Lax` cookie named `sid`. A session ends after 7 days without use, and 30 days after signing in at the latest, however active it is. Send the cookie back on later requests:
+
+Login is limited to 10 attempts per 15 minutes and signup to 5 per hour, per IP address. Writes that the browser marks as coming from another site are refused, so other websites cannot act with your cookie.
 
 ```sh
 curl -c cookies.txt -X POST localhost:3000/auth/login \
@@ -124,9 +128,11 @@ A label has a `name` (up to 50 characters, unique ignoring case) and a `color` a
 | --- | --- | --- |
 | `400` | Invalid input, or an unknown label id on a todo | Validation details |
 | `401` | Wrong email or password, or a missing or expired session | `{"error": "Invalid email or password"}` |
+| `403` | A write sent from another website | `{"error": "Cross-site request blocked"}` |
 | `404` | Todo or label does not exist | `{"error": "Todo not found"}` |
 | `409` | A label name, email or username is already taken | `{"error": "Label \"work\" already exists"}` |
 | `413` | Request body larger than 64 KiB | |
+| `429` | Too many login or signup attempts. The `Retry-After` header says how many seconds to wait | `{"error": "Too many requests, try again later"}` |
 
 ## Development
 
