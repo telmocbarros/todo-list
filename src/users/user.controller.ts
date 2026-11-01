@@ -1,6 +1,7 @@
 import type { FastifyInstance, preHandlerAsyncHookHandler } from 'fastify';
 import { currentUser } from '../auth/auth.controller.js';
 import { LIMITS, SINGLE_LINE_TEXT, USERNAME } from '../input.js';
+import type { TRateLimitRouteOptions } from '../rate-limit/rate-limit.js';
 import type { SignupDTO } from './user.dto.js';
 import type { UserService } from './user.service.js';
 
@@ -10,10 +11,12 @@ export const registerUserRoutes = (
   app: FastifyInstance,
   service: UserService,
   requireUser: preHandlerAsyncHookHandler,
+  signupRateLimit: TRateLimitRouteOptions,
 ): void => {
   app.post<{ Body: SignupDTO }>(
     '/auth/signup',
     {
+      ...signupRateLimit,
       schema: {
         body: {
           type: 'object',

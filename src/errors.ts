@@ -19,6 +19,20 @@ export class UnauthorizedError extends Error {
   }
 }
 
+export class ForbiddenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ForbiddenError';
+  }
+}
+
+export class TooManyRequestsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TooManyRequestsError';
+  }
+}
+
 export class ConflictError extends Error {
   constructor(message: string) {
     super(message);

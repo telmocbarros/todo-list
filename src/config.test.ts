@@ -2,13 +2,31 @@ import { describe, expect, it } from 'vitest';
 import { loadConfig } from './config.js';
 
 describe('loadConfig', () => {
-  it('uses defaults: port 3000, local database, plain HTTP, no proxy', () => {
+  it('uses defaults: port 3000, local database, plain HTTP, no proxy, no extra origins, the plugin limiter', () => {
     expect(loadConfig({})).toEqual({
       port: 3000,
       databasePath: './data/todo-list.db',
       tls: undefined,
       trustProxy: false,
+      allowedOrigins: [],
+      rateLimiter: 'plugin',
     });
+  });
+
+  it('reads ALLOWED_ORIGINS as a comma-separated list of origins, normalized', () => {
+    const config = loadConfig({ ALLOWED_ORIGINS: 'https://app.example.com, http://localhost:5173/' });
+    expect(config.allowedOrigins).toEqual(['https://app.example.com', 'http://localhost:5173']);
+  });
+
+  it('rejects an allowed origin that is not a plain origin', () => {
+    expect(() => loadConfig({ ALLOWED_ORIGINS: 'not a url' })).toThrow(/ALLOWED_ORIGINS/);
+    expect(() => loadConfig({ ALLOWED_ORIGINS: 'https://app.example.com/path' })).toThrow(/ALLOWED_ORIGINS/);
+  });
+
+  it('chooses the rate limiter with RATE_LIMITER, and rejects unknown values', () => {
+    expect(loadConfig({ RATE_LIMITER: 'custom' }).rateLimiter).toBe('custom');
+    expect(loadConfig({ RATE_LIMITER: 'plugin' }).rateLimiter).toBe('plugin');
+    expect(() => loadConfig({ RATE_LIMITER: 'redis' })).toThrow(/RATE_LIMITER/);
   });
 
   it('reads PORT and DATABASE_PATH', () => {

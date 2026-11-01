@@ -7,7 +7,7 @@ import { LabelRepository } from './labels/label.repository.js';
 import { TodoRepository } from './todos/todo.repository.js';
 import { UserRepository } from './users/user.repository.js';
 
-const { port, databasePath, tls, trustProxy } = loadConfig(process.env);
+const { port, databasePath, tls, trustProxy, allowedOrigins, rateLimiter } = loadConfig(process.env);
 
 const { db, close } = await createDatabase(databasePath);
 const app = buildApp(
@@ -19,6 +19,8 @@ const app = buildApp(
   },
   {
     trustProxy,
+    allowedOrigins,
+    rateLimiter,
     https: tls && { key: readFileSync(tls.keyPath), cert: readFileSync(tls.certPath) },
   },
 );

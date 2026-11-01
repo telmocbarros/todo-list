@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { UnauthorizedError } from '../errors.js';
 import { LIMITS } from '../input.js';
+import type { TRateLimitRouteOptions } from '../rate-limit/rate-limit.js';
 import type { TPublicUser } from '../users/user.model.js';
 import type { LoginDTO } from './auth.dto.js';
 import type { AuthService } from './auth.service.js';
@@ -28,12 +29,17 @@ export const currentUser = (req: FastifyRequest): TPublicUser => {
   return req.user;
 };
 
-export const registerAuthRoutes = (app: FastifyInstance, auth: AuthService): void => {
+export const registerAuthRoutes = (
+  app: FastifyInstance,
+  auth: AuthService,
+  loginRateLimit: TRateLimitRouteOptions,
+): void => {
   app.decorateRequest('user', null);
 
   app.post<{ Body: LoginDTO }>(
     '/auth/login',
     {
+      ...loginRateLimit,
       schema: {
         body: {
           type: 'object',
