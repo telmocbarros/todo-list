@@ -60,7 +60,7 @@ All request and response bodies are JSON. Dates are ISO 8601 strings in UTC.
 
 Signup takes `email`, `username` (3 to 32 letters, digits, `.`, `-` or `_`), `firstName`, `lastName` (each up to 100 characters) and `password` (12 to 128 characters). Passwords are stored as argon2id hashes and never returned.
 
-Signing in sets an `HttpOnly`, `Secure`, `SameSite=Lax` cookie named `sid`, valid for 30 days. Send it back on later requests:
+Signing in sets an `HttpOnly`, `Secure`, `SameSite=Lax` cookie named `sid`. A session ends after 7 days without use, and 30 days after signing in at the latest, however active it is. Send the cookie back on later requests:
 
 ```sh
 curl -c cookies.txt -X POST localhost:3000/auth/login \

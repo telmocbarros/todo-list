@@ -105,17 +105,69 @@ describe('AuthService', () => {
       expect(await auth.authenticate('not-a-real-token')).toBeUndefined();
     });
 
-    it('rejects an expired session and deletes it', async () => {
-      const { token } = await auth.login({ email: 'ada@example.com', password });
-      now = new Date(now.getTime() + 30 * DAY + 1);
-      expect(await auth.authenticate(token)).toBeUndefined();
-      expect(await sessions.findById(sha256(token))).toBeUndefined();
+  });
+
+  describe('timeouts: 7 days idle, 30 days absolute', () => {
+    const HOUR = 60 * 60 * 1000;
+    let token: string;
+    let loggedInAt: number;
+
+    const advanceTo = (msAfterLogin: number) => {
+      now = new Date(loggedInAt + msAfterLogin);
+    };
+    const storedExpiry = async () => (await sessions.findById(sha256(token)))?.expiresAt;
+
+    beforeEach(async () => {
+      loggedInAt = now.getTime();
+      ({ token } = await auth.login({ email: 'ada@example.com', password }));
     });
 
-    it('accepts a session up to the moment it expires', async () => {
-      const { token } = await auth.login({ email: 'ada@example.com', password });
-      now = new Date(now.getTime() + 30 * DAY - 1);
+    it('accepts an unused session just before the idle timeout', async () => {
+      advanceTo(7 * DAY - 1);
       expect(await auth.authenticate(token)).toBeDefined();
+    });
+
+    it('expires a session left unused for 7 days, and deletes it', async () => {
+      advanceTo(7 * DAY);
+      expect(await auth.authenticate(token)).toBeUndefined();
+      expect(await storedExpiry()).toBeUndefined();
+    });
+
+    it('keeps a session alive while it is being used', async () => {
+      advanceTo(6 * DAY);
+      expect(await auth.authenticate(token)).toBeDefined();
+      advanceTo(12 * DAY); // 12 days after login, but only 6 since last use
+      expect(await auth.authenticate(token)).toBeDefined();
+    });
+
+    it('ends even an active session 30 days after login', async () => {
+      for (const day of [6, 12, 18, 24, 29]) {
+        advanceTo(day * DAY);
+        expect(await auth.authenticate(token)).toBeDefined();
+      }
+      advanceTo(30 * DAY); // used one day ago, but the absolute cap is reached
+      expect(await auth.authenticate(token)).toBeUndefined();
+      expect(await storedExpiry()).toBeUndefined();
+    });
+
+    it('never slides the idle deadline past the absolute cap', async () => {
+      // Used every 6 days so it never idles out; on day 29, now + 7 days would overshoot the cap
+      for (const day of [6, 12, 18, 24, 29]) {
+        advanceTo(day * DAY);
+        expect(await auth.authenticate(token)).toBeDefined();
+      }
+      expect(await storedExpiry()).toBe(new Date(loggedInAt + 30 * DAY).toISOString());
+    });
+
+    it('refreshes the idle deadline at most once an hour, to avoid a database write per request', async () => {
+      const atLogin = await storedExpiry();
+      advanceTo(30 * 60 * 1000); // half an hour later: not refreshed yet
+      await auth.authenticate(token);
+      expect(await storedExpiry()).toBe(atLogin);
+
+      advanceTo(HOUR + 1); // over an hour since the deadline was set: refreshed
+      await auth.authenticate(token);
+      expect(await storedExpiry()).toBe(new Date(loggedInAt + HOUR + 1 + 7 * DAY).toISOString());
     });
   });
 

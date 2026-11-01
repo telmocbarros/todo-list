@@ -44,6 +44,14 @@ describe('SessionRepository', () => {
     expect(await sessions.findById('nope')).toBeUndefined();
   });
 
+  it('moves the expiry of one session, leaving the others alone', async () => {
+    await sessions.save(session({ id: 'a' }));
+    await sessions.save(session({ id: 'b' }));
+    await sessions.updateExpiry('a', '2030-02-15T00:00:00.000Z');
+    expect((await sessions.findById('a'))?.expiresAt).toBe('2030-02-15T00:00:00.000Z');
+    expect((await sessions.findById('b'))?.expiresAt).toBe(session().expiresAt);
+  });
+
   it('deletes a session', async () => {
     await sessions.save(session());
     await sessions.delete('hash-1');

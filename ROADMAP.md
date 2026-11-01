@@ -11,6 +11,7 @@ Each phase follows the workflow in `CLAUDE.md`: failing tests first, then the im
 | Topic | Decision |
 | --- | --- |
 | Authentication | Password + server-side session in a cookie, so sessions can be revoked |
+| Session lifetime | 7 days idle timeout, 30 days absolute cap |
 | Password hashing | argon2id, with a startup smoke test because it is a native module |
 | Email | A free-tier provider over SMTP behind an `IEmailSender` interface; the console in development and tests |
 | Duplicate signup | One generic message for a taken email or username |
@@ -43,7 +44,8 @@ Accounts, so there is someone to own data.
 
 - [x] `src/users/`: model, DTO, repository (interface and implementation in one file) and service with `signup` and `get`.
 - [x] `src/users/` controller: the signup and `GET /me` routes.
-- [x] `src/auth/` session repository, auth service (`login`, `authenticate`, `logout`, 30-day sessions) and its controller.
+- [x] `src/auth/` session repository, auth service (`login`, `authenticate`, `logout`) and its controller.
+- [x] Session timeouts: 7 days idle, sliding forward with use (rewritten at most once an hour), and a 30-day absolute cap from sign-in that no amount of activity extends.
 - [x] Hash passwords with argon2id, using a Rust-backed package that ships prebuilt binaries so no C++ toolchain is needed at install time. `password_hash` never leaves the service: it returns a `TPublicUser`.
 - [x] A test that hashes and verifies one password, so a binary that cannot load fails in CI rather than at a user's first signup. This is the lesson from `better-sqlite3`, which imported fine here and then hung on opening a database.
 - [x] Signup request validation in the controller schema: email format and maximum length (254), username length (3 to 32) and allowed characters, first and last name maximum length (100), password between 12 and 128 characters. The upper bound matters: without it, a huge password makes argon2 burn server memory and CPU. Names are already normalized to Unicode NFC in the service.

@@ -6,6 +6,7 @@ import type { SessionModel } from './session.model.js';
 export interface ISessionRepository {
   findById(id: string): Promise<SessionModel | undefined>;
   save(session: SessionModel): Promise<SessionModel>;
+  updateExpiry(id: string, expiresAt: string): Promise<void>;
   delete(id: string): Promise<void>;
   deleteAllForUser(userId: string): Promise<void>;
 }
@@ -21,6 +22,10 @@ export class SessionRepository implements ISessionRepository {
   async save(session: SessionModel): Promise<SessionModel> {
     await this.db.insert(sessions).values(session);
     return session;
+  }
+
+  async updateExpiry(id: string, expiresAt: string): Promise<void> {
+    await this.db.update(sessions).set({ expiresAt }).where(eq(sessions.id, id));
   }
 
   async delete(id: string): Promise<void> {
