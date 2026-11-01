@@ -2,6 +2,24 @@ import { sql } from 'drizzle-orm';
 import { integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import type { TPriority } from '../todos/priority.js';
 
+export const users = sqliteTable(
+  'users',
+  {
+    id: text('id').primaryKey(),
+    email: text('email').notNull(),
+    username: text('username').notNull(),
+    firstName: text('first_name').notNull(),
+    lastName: text('last_name').notNull(),
+    passwordHash: text('password_hash').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('users_email_unique').on(sql`lower(${table.email})`),
+    uniqueIndex('users_username_unique').on(sql`lower(${table.username})`),
+  ],
+);
+
 export const labels = sqliteTable(
   'labels',
   {
