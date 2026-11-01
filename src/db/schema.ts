@@ -20,6 +20,16 @@ export const users = sqliteTable(
   ],
 );
 
+export const sessions = sqliteTable('sessions', {
+  // SHA-256 hash of the cookie token, never the token itself
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: text('created_at').notNull(),
+  expiresAt: text('expires_at').notNull(),
+});
+
 export const labels = sqliteTable(
   'labels',
   {

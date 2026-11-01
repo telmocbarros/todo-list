@@ -1,3 +1,4 @@
+import { SessionRepository } from '../auth/session.repository.js';
 import { createDatabase } from '../db/client.js';
 import { LabelRepository } from '../labels/label.repository.js';
 import { TodoRepository } from '../todos/todo.repository.js';
@@ -10,6 +11,7 @@ export const createTestRepositories = async () => {
     todoRepository: new TodoRepository(db),
     labelRepository: new LabelRepository(db),
     userRepository: new UserRepository(db),
+    sessionRepository: new SessionRepository(db),
     close,
   };
 };
