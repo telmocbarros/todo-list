@@ -14,6 +14,7 @@ Each phase follows the workflow in `CLAUDE.md`: failing tests first, then the im
 | Password hashing | argon2id, with a startup smoke test because it is a native module |
 | Email | A free-tier provider over SMTP behind an `IEmailSender` interface; the console in development and tests |
 | Duplicate signup | One generic message for a taken email or username |
+| Input handling | Controllers validate shape and size (limits in `src/input.ts`); services normalize to Unicode NFC and trim; text is stored as sent and escaped where it is used |
 | History view | Completed todos leave the active list; `completed_at` records when, and survives reopening |
 | Auditing | A separate `todo_events` trail, kept apart from the history view |
 | Date handling | The API stores and returns UTC; the client formats using the user's settings |
@@ -27,9 +28,9 @@ Accounts, so there is someone to own data.
 
 **Schema**
 
-- `users`: `id`, `email`, `username`, `first_name`, `last_name`, `password_hash`, `created_at`, `updated_at`.
-- `sessions`: `id`, `user_id` (cascade delete), `created_at`, `expires_at`.
-- `email` and `username` are unique case-insensitively. Reuse the `uniqueIndex(...).on(sql\`lower(...)\`)` pattern already used for label names in `src/db/schema.ts`.
+- [x] `users`: `id`, `email`, `username`, `first_name`, `last_name`, `password_hash`, `created_at`, `updated_at`.
+- [ ] `sessions`: `id`, `user_id` (cascade delete), `created_at`, `expires_at`.
+- [x] `email` and `username` are unique case-insensitively, using the same `uniqueIndex(...).on(sql\`lower(...)\`)` pattern as label names in `src/db/schema.ts`.
 
 **Endpoints**
 
@@ -40,9 +41,12 @@ Accounts, so there is someone to own data.
 
 **Work**
 
-- [ ] New `src/users/` and `src/auth/` modules, following the existing split: model, DTOs, repository interface plus its implementation, service, controller.
-- [ ] Hash passwords with argon2id, using a Rust-backed package that ships prebuilt binaries so no C++ toolchain is needed at install time. `password_hash` must never appear in a response DTO.
-- [ ] A test that hashes and verifies one password, so a binary that cannot load fails in CI rather than at a user's first signup. This is the lesson from `better-sqlite3`, which imported fine here and then hung on opening a database.
+- [x] `src/users/`: model, DTO, repository (interface and implementation in one file) and service with `signup` and `get`. Done through the service layer; no HTTP exposure yet.
+- [ ] `src/users/` controller: the signup and `GET /me` routes.
+- [ ] `src/auth/` session and login service, and its controller. Only the password hasher exists so far.
+- [x] Hash passwords with argon2id, using a Rust-backed package that ships prebuilt binaries so no C++ toolchain is needed at install time. `password_hash` never leaves the service: it returns a `TPublicUser`.
+- [x] A test that hashes and verifies one password, so a binary that cannot load fails in CI rather than at a user's first signup. This is the lesson from `better-sqlite3`, which imported fine here and then hung on opening a database.
+- [ ] Signup request validation in the controller schema: email format and maximum length (254), username length (3 to 32) and allowed characters, first and last name maximum length (100), password between 12 and 128 characters. The upper bound matters: without it, a huge password makes argon2 burn server memory and CPU. Names are already normalized to Unicode NFC in the service.
 - [ ] Build the Docker image for the architecture it will run on; a native binary built for arm64 will not load on an x64 host.
 - [ ] Session cookie via `@fastify/cookie`, with `HttpOnly`, `Secure` and `SameSite` set.
 - [ ] A hook that loads the session and puts the user on the request.
