@@ -2,7 +2,7 @@
 
 Where the app is going, in dependency order. Today it is a single-user CRUD API for todos, labels and priorities, with no accounts: anything that can reach the URL owns all the data.
 
-Phases are ordered because they depend on each other, not by preference. Auth comes first because nothing else can be scoped to a person without it, and ownership scoping comes second because it changes every query in the app.
+Phases are ordered because they depend on each other, not by preference. Auth comes first because nothing else can be scoped to a person without it, email verification and password reset follow because accounts are not usable without them, and ownership scoping comes next because it changes every query in the app.
 
 Each phase follows the workflow in `CLAUDE.md`: failing tests first, then the implementation, with the generated migration committed alongside the code.
 
@@ -12,6 +12,8 @@ Each phase follows the workflow in `CLAUDE.md`: failing tests first, then the im
 | --- | --- |
 | Authentication | Password + server-side session in a cookie, so sessions can be revoked |
 | Password hashing | argon2id, with a startup smoke test because it is a native module |
+| Email | A free-tier provider over SMTP behind an `IEmailSender` interface; the console in development and tests |
+| Duplicate signup | One generic message for a taken email or username |
 | History view | Completed todos leave the active list; `completed_at` records when, and survives reopening |
 | Auditing | A separate `todo_events` trail, kept apart from the history view |
 | Date handling | The API stores and returns UTC; the client formats using the user's settings |
@@ -45,13 +47,44 @@ Accounts, so there is someone to own data.
 - [ ] Session cookie via `@fastify/cookie`, with `HttpOnly`, `Secure` and `SameSite` set.
 - [ ] A hook that loads the session and puts the user on the request.
 - [ ] Add `UnauthorizedError` (401) and `ForbiddenError` (403) to `src/errors.ts` and to the `statusByError` table in `src/app.ts`.
-- [ ] CSRF protection, which cookie auth requires, and a rate limit on login (see phase 6 for which limiter).
+- [ ] CSRF protection, which cookie auth requires, and a rate limit on login (see phase 7 for which limiter).
+- [ ] Login does the same work whether or not the account exists: when no user is found it still verifies the password against a fixed dummy hash, and every failure returns one generic "invalid email or password". Without this, an unknown email answers in about 1 ms and a wrong password in about 15 ms, which tells an attacker which emails are registered.
+- [ ] Known gap until phase 2: a duplicate signup returns before hashing the password, so it is faster than a real signup. Phase 2 closes it by making signup answer identically.
 
 **Risk** — `createTestRepositories()` in `src/test/repositories.ts` gains a user repository and a helper to create a test user. Every existing test then needs a user to act as.
 
 ---
 
-## Phase 2 — Ownership scoping
+## Phase 2 — Email: verification and password reset
+
+Sending email, and the two flows that depend on it. It also closes the account-enumeration gap left by phase 1, where a duplicate signup answers differently from (and faster than) a real one.
+
+**Schema**
+
+- [ ] `email_verified_at` on `users`, nullable.
+- [ ] `email_tokens`: `id`, `user_id` (cascade delete), `type` (`verify` or `reset`), `token_hash`, `expires_at`, `used_at`, `created_at`. Only a SHA-256 hash of the token is stored, so a leaked database does not leak working links. Tokens are 32 random bytes, URL-safe.
+
+**Sending**
+
+- [ ] `IEmailSender` interface (recipient, subject, text body), with the implementation in the same file. A console implementation is the default for development and tests, so nothing is sent by accident. An SMTP implementation uses `nodemailer`, configured through `SMTP_*` environment variables in `src/config.ts`.
+- [ ] The provider is a free tier (Resend or Brevo, both speak SMTP), so switching provider is configuration. Locally, Mailpit catches mail. Production sending needs a domain with SPF, DKIM and DMARC records; use port 587 or 465, since port 25 is blocked by most hosts.
+- [ ] Tests assert on what would have been sent, with no network.
+
+**Endpoints**
+
+- [ ] Signup always responds the same way, whether or not the email already has an account. The real outcome goes to the inbox: a verification link for a new address, a "someone tried to sign up with your email" notice for an existing one.
+- [ ] `POST /auth/verify-email` with a token, and a rate-limited resend.
+- [ ] `POST /auth/forgot-password` always answers 202 with the same body. `POST /auth/reset-password` takes a token and a new password.
+- [ ] A password reset invalidates every session of that user.
+- [ ] Tokens are single use. Verification links expire after 24 hours, reset links after 1 hour.
+
+**Open decision** — whether an unverified user may log in at all, or only after verifying. Stricter is safer; looser is friendlier.
+
+**Risk** — these endpoints send mail, so they are an abuse target. They need rate limiting before they ship, so the basic limiter from phase 7 must land with this phase or a plugin-based one stands in until then.
+
+---
+
+## Phase 3 — Ownership scoping
 
 The riskiest phase: it touches every query. Until it lands, accounts exist but data is still shared.
 
@@ -71,7 +104,7 @@ The riskiest phase: it touches every query. Until it lands, accounts exist but d
 
 ---
 
-## Phase 3 — History of previously completed tasks
+## Phase 4 — History of previously completed tasks
 
 Completing a todo moves it out of the active list into a history you can look back on.
 
@@ -95,7 +128,7 @@ The two are deliberately not the same thing. Completing a todo sets `completed_a
 
 ---
 
-## Phase 4 — Per-user settings
+## Phase 5 — Per-user settings
 
 **Schema**
 
@@ -114,7 +147,7 @@ The two are deliberately not the same thing. Completing a todo sets `completed_a
 
 ---
 
-## Phase 5 — Audit trail
+## Phase 6 — Audit trail
 
 Separate from the history view. History is what the user reads; this is for auditing what happened.
 
@@ -131,7 +164,7 @@ Separate from the history view. History is what the user reads; this is for audi
 
 ---
 
-## Phase 6 — Infrastructure
+## Phase 7 — Infrastructure
 
 Not features, but the difference between code that works and an app that can be run daily.
 
