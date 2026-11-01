@@ -21,7 +21,7 @@ Configuration comes from environment variables, parsed and validated in `src/con
 
 ## Architecture
 
-A Fastify REST API for todos (`/todos`) and user-defined labels (`/labels`), plus a read-only `/priorities`. Each resource is layered as controller → service → repository.
+A Fastify REST API for todos (`/todos`), user-defined labels (`/labels`) and accounts (`/auth/*`, `/me`), plus a read-only `/priorities`. Each resource is layered as controller → service → repository.
 
 - `src/todos/todo.controller.ts` — HTTP layer: `registerTodoRoutes(app, service)` declares routes and JSON-schema validation, and calls the service. No business logic. Updates use `PATCH` (partial), not `PUT`.
 - `src/todos/todo.service.ts` — business logic (id/timestamp generation, not-found handling). Depends on the `ITodoRepository` interface, and throws `NotFoundError` (`src/errors.ts`) rather than touching HTTP.
@@ -30,7 +30,8 @@ A Fastify REST API for todos (`/todos`) and user-defined labels (`/labels`), plu
 - `src/todos/todo.model.ts` — `TodoModel`; `todo.dto.ts` — request shapes `CreateTodoDTO`/`UpdateTodoDTO`. Labels follow the same pattern (`LabelModel`, `label.dto.ts`).
 - `src/todos/priority.ts` — the fixed in-memory priority levels (`low`/green, `medium`/yellow, `high`/red); not a user-managed resource. Todos default to `low`.
 - `src/labels/` — same controller/service/repository split for labels (unique case-insensitive name, required hex colour). Todos reference labels by `labelIds`; `TodoService` rejects unknown ids, and `LabelService.remove` detaches the label from all todos via `ITodoRepository.removeLabel`.
-- `src/app.ts` — composition root: `buildApp({ todoRepository, labelRepository }, { https?, trustProxy? })` takes the repositories (and optional transport settings) as arguments (there is deliberately no default) and wires them → services → controllers and maps `NotFoundError`/`ValidationError`/`ConflictError` to 404/400/409 in the error handler. It does not listen, so tests can use `app.inject()`.
+- `src/users/` and `src/auth/` — accounts and sessions. `UserService` handles signup and returns `TPublicUser` (never the password hash). `AuthService` logs in (argon2id via `PasswordHasher`; an unknown email is still checked against a dummy hash so both failures cost the same), and stores sessions by a SHA-256 hash of the cookie token. The `requireUser` hook from `createRequireUser` resolves the `sid` cookie and sets `req.user`; controllers call `currentUser(req).id` and pass that plain id to services, which never see the request. The todo and label routes are not protected yet (roadmap phase 3).
+- `src/app.ts` — composition root: `buildApp({ todoRepository, labelRepository, userRepository, sessionRepository }, { https?, trustProxy? })` takes the repositories (and optional transport settings) as arguments (there is deliberately no default) and wires them → services → controllers and maps `NotFoundError`/`ValidationError`/`UnauthorizedError`/`ConflictError` to 404/400/401/409 in the error handler. It does not listen, so tests can use `app.inject()`.
 - `src/server.ts` — entry point; loads the config, opens the database, calls `buildApp()` with the Drizzle repositories, closes the DB on SIGINT/SIGTERM, and `listen()`s on `0.0.0.0`.
 
 ## Conventions

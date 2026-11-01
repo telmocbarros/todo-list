@@ -4,7 +4,7 @@ A REST API for managing todos, built with Node.js, TypeScript, Fastify and SQLit
 
 Todos have a title, description, priority, due date and labels. You create the labels yourself. Data is stored in a local SQLite file, so it survives restarts.
 
-> **Status:** early. There are no user accounts or authentication yet, so anyone who can reach the server can read and change everything. Run it on localhost or a private network only. See [ROADMAP.md](ROADMAP.md) for what is planned.
+> **Status:** early. You can create an account and sign in, but todos and labels are not yet tied to an account or protected by login: anyone who can reach the server can read and change them. Run it on localhost or a private network only. See [ROADMAP.md](ROADMAP.md) for what is planned.
 
 ## Quick start
 
@@ -48,6 +48,26 @@ curl --cacert cert.pem https://localhost:3000/todos
 ## API
 
 All request and response bodies are JSON. Dates are ISO 8601 strings in UTC.
+
+### Accounts
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/auth/signup` | Create an account (`201`). Does not sign you in |
+| `POST` | `/auth/login` | Sign in with `email` and `password`. Sets the session cookie |
+| `POST` | `/auth/logout` | Sign out (`204`). Ends the session and clears the cookie |
+| `GET` | `/me` | The signed-in user, or `401` |
+
+Signup takes `email`, `username` (3 to 32 letters, digits, `.`, `-` or `_`), `firstName`, `lastName` (each up to 100 characters) and `password` (12 to 128 characters). Passwords are stored as argon2id hashes and never returned.
+
+Signing in sets an `HttpOnly`, `Secure`, `SameSite=Lax` cookie named `sid`, valid for 30 days. Send it back on later requests:
+
+```sh
+curl -c cookies.txt -X POST localhost:3000/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"email": "ada@example.com", "password": "correct horse battery staple"}'
+curl -b cookies.txt localhost:3000/me
+```
 
 ### Todos
 
@@ -103,8 +123,9 @@ A label has a `name` (up to 50 characters, unique ignoring case) and a `color` a
 | Status | When | Body |
 | --- | --- | --- |
 | `400` | Invalid input, or an unknown label id on a todo | Validation details |
+| `401` | Wrong email or password, or a missing or expired session | `{"error": "Invalid email or password"}` |
 | `404` | Todo or label does not exist | `{"error": "Todo not found"}` |
-| `409` | A label name is already taken | `{"error": "Label \"work\" already exists"}` |
+| `409` | A label name, email or username is already taken | `{"error": "Label \"work\" already exists"}` |
 | `413` | Request body larger than 64 KiB | |
 
 ## Development

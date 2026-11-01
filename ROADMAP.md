@@ -29,33 +29,34 @@ Accounts, so there is someone to own data.
 **Schema**
 
 - [x] `users`: `id`, `email`, `username`, `first_name`, `last_name`, `password_hash`, `created_at`, `updated_at`.
-- [ ] `sessions`: `id`, `user_id` (cascade delete), `created_at`, `expires_at`.
+- [x] `sessions`: `id`, `user_id` (cascade delete), `created_at`, `expires_at`. The `id` is a SHA-256 hash of the cookie token, so a leaked database cannot be used to sign in.
 - [x] `email` and `username` are unique case-insensitively, using the same `uniqueIndex(...).on(sql\`lower(...)\`)` pattern as label names in `src/db/schema.ts`.
 
 **Endpoints**
 
-- [ ] `POST /auth/signup`
-- [ ] `POST /auth/login`
-- [ ] `POST /auth/logout`
-- [ ] `GET /me` — the signed-in user. `/me` rather than `/users/:id` because the client does not know its own id before it has asked, and an id in the URL invites probing other people's. A `GET /users/:id` only becomes meaningful if users can ever look each other up.
+- [x] `POST /auth/signup` — creates the account but does not sign in; the client logs in next. This leaves room for phase 2 to require email verification first.
+- [x] `POST /auth/login`
+- [x] `POST /auth/logout`
+- [x] `GET /me` — the signed-in user. `/me` rather than `/users/:id` because the client does not know its own id before it has asked, and an id in the URL invites probing other people's. A `GET /users/:id` only becomes meaningful if users can ever look each other up.
 
 **Work**
 
-- [x] `src/users/`: model, DTO, repository (interface and implementation in one file) and service with `signup` and `get`. Done through the service layer; no HTTP exposure yet.
-- [ ] `src/users/` controller: the signup and `GET /me` routes.
-- [ ] `src/auth/` session and login service, and its controller. Only the password hasher exists so far.
+- [x] `src/users/`: model, DTO, repository (interface and implementation in one file) and service with `signup` and `get`.
+- [x] `src/users/` controller: the signup and `GET /me` routes.
+- [x] `src/auth/` session repository, auth service (`login`, `authenticate`, `logout`, 30-day sessions) and its controller.
 - [x] Hash passwords with argon2id, using a Rust-backed package that ships prebuilt binaries so no C++ toolchain is needed at install time. `password_hash` never leaves the service: it returns a `TPublicUser`.
 - [x] A test that hashes and verifies one password, so a binary that cannot load fails in CI rather than at a user's first signup. This is the lesson from `better-sqlite3`, which imported fine here and then hung on opening a database.
-- [ ] Signup request validation in the controller schema: email format and maximum length (254), username length (3 to 32) and allowed characters, first and last name maximum length (100), password between 12 and 128 characters. The upper bound matters: without it, a huge password makes argon2 burn server memory and CPU. Names are already normalized to Unicode NFC in the service.
+- [x] Signup request validation in the controller schema: email format and maximum length (254), username length (3 to 32) and allowed characters, first and last name maximum length (100), password between 12 and 128 characters. The upper bound matters: without it, a huge password makes argon2 burn server memory and CPU. Names are already normalized to Unicode NFC in the service.
 - [ ] Build the Docker image for the architecture it will run on; a native binary built for arm64 will not load on an x64 host.
-- [ ] Session cookie via `@fastify/cookie`, with `HttpOnly`, `Secure` and `SameSite` set.
-- [ ] A hook that loads the session and puts the user on the request.
-- [ ] Add `UnauthorizedError` (401) and `ForbiddenError` (403) to `src/errors.ts` and to the `statusByError` table in `src/app.ts`.
+- [x] Session cookie via `@fastify/cookie`, with `HttpOnly`, `Secure` and `SameSite=Lax` set.
+- [x] A `requireUser` hook that loads the session and puts the user on the request. Controllers read it with `currentUser(req)` and pass the id to services.
+- [x] Add `UnauthorizedError` (401) to `src/errors.ts` and to the `statusByError` table in `src/app.ts`.
+- [ ] `ForbiddenError` (403), deferred to phase 3, where it gets its first use. Until then the todo and label routes stay open, so that their tests change once, together with ownership.
 - [ ] CSRF protection, which cookie auth requires, and a rate limit on login (see phase 7 for which limiter).
-- [ ] Login does the same work whether or not the account exists: when no user is found it still verifies the password against a fixed dummy hash, and every failure returns one generic "invalid email or password". Without this, an unknown email answers in about 1 ms and a wrong password in about 15 ms, which tells an attacker which emails are registered.
+- [x] Login does the same work whether or not the account exists: when no user is found it still verifies the password against a fixed dummy hash, and every failure returns one generic "invalid email or password". Without this, an unknown email answers in about 1 ms and a wrong password in about 15 ms, which tells an attacker which emails are registered.
 - [ ] Known gap until phase 2: a duplicate signup returns before hashing the password, so it is faster than a real signup. Phase 2 closes it by making signup answer identically.
 
-**Risk** — `createTestRepositories()` in `src/test/repositories.ts` gains a user repository and a helper to create a test user. Every existing test then needs a user to act as.
+**Risk** — when phase 3 protects the todo and label routes, every existing API test needs a signed-in user to act as. `createTestRepositories()` already returns the user and session repositories.
 
 ---
 
