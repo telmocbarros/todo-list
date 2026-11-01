@@ -8,7 +8,7 @@ Todos have a title, description, priority, due date and labels. You create the l
 
 ## Quick start
 
-Requires Node.js 22.12 or newer (22.12+, 24.x or 26+). Odd-numbered releases such as 23 and 25 are not supported by the test runner.
+Requires Node.js 22.12 or newer (22.12+, 24.x or 26+). Odd-numbered releases such as 23 and 25 are not supported by the test runner. `npm install` refuses to run on an unsupported version, because `.npmrc` sets `engine-strict=true`.
 
 ```sh
 npm install
