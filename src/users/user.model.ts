@@ -11,3 +11,5 @@ export interface UserModel {
 
 /** What may leave the API: a user without their password hash. */
 export type TPublicUser = Omit<UserModel, 'passwordHash'>;
+
+export const toPublicUser = ({ passwordHash: _passwordHash, ...user }: UserModel): TPublicUser => user;

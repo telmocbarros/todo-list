@@ -3,10 +3,8 @@ import type { IPasswordHasher } from '../auth/password-hasher.js';
 import { ConflictError, NotFoundError } from '../errors.js';
 import { cleanText } from '../input.js';
 import type { SignupDTO } from './user.dto.js';
-import type { TPublicUser, UserModel } from './user.model.js';
+import { type TPublicUser, toPublicUser } from './user.model.js';
 import type { IUserRepository } from './user.repository.js';
-
-const toPublicUser = ({ passwordHash: _passwordHash, ...user }: UserModel): TPublicUser => user;
 
 export class UserService {
   constructor(
