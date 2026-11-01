@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import { ConflictError, NotFoundError, ValidationError } from './errors.js';
+import { LIMITS } from './input.js';
 import { registerLabelRoutes } from './labels/label.controller.js';
 import type { ILabelRepository } from './labels/label.repository.js';
 import { LabelService } from './labels/label.service.js';
@@ -29,7 +30,7 @@ export const buildApp = (
   { todoRepository, labelRepository }: IAppDependencies,
   { https, trustProxy = false }: IAppOptions = {},
 ): FastifyInstance => {
-  const app = Fastify({ logger: true, trustProxy, ...(https && { https }) });
+  const app = Fastify({ logger: true, trustProxy, bodyLimit: LIMITS.bodyBytes, ...(https && { https }) });
 
   app.setErrorHandler((error, _req, reply) => {
     const match = statusByError.find(([type]) => error instanceof type);

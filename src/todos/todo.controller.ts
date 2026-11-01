@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { idParams, type IIdParams } from '../http.js';
+import { LIMITS, MULTI_LINE_TEXT, SINGLE_LINE_TEXT } from '../input.js';
 import { PRIORITIES } from './priority.js';
 import type { CreateTodoDTO, UpdateTodoDTO } from './todo.dto.js';
 import type { TodoService } from './todo.service.js';
@@ -7,11 +8,14 @@ import type { TodoService } from './todo.service.js';
 const dueDate = { type: ['string', 'null'], format: 'date-time' } as const;
 
 const createProperties = {
-  // At least one non-whitespace character
-  title: { type: 'string', pattern: '\\S' },
-  description: { type: 'string' },
+  title: { type: 'string', maxLength: LIMITS.titleLength, pattern: SINGLE_LINE_TEXT },
+  description: { type: 'string', maxLength: LIMITS.descriptionLength, pattern: MULTI_LINE_TEXT },
   priority: { type: 'string', enum: PRIORITIES.map((p) => p.level) },
-  labelIds: { type: 'array', items: { type: 'string' } },
+  labelIds: {
+    type: 'array',
+    maxItems: LIMITS.labelsPerTodo,
+    items: { type: 'string', maxLength: LIMITS.idLength },
+  },
   dueDate,
 } as const;
 

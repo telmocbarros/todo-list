@@ -62,4 +62,10 @@ describe('LabelService', () => {
     await expect(service.get(a.id)).rejects.toBeInstanceOf(NotFoundError);
     expect((await todos.get(todo.id)).labelIds).toEqual([b.id]);
   });
+
+  it('stores names in NFC form, so look-alike spellings are the same label', async () => {
+    const label = await service.create({ name: 'Café', color });
+    expect(label.name).toBe('Café');
+    await expect(service.create({ name: 'Café', color })).rejects.toBeInstanceOf(ConflictError);
+  });
 });

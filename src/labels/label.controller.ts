@@ -1,11 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { idParams, type IIdParams } from '../http.js';
+import { LIMITS, SINGLE_LINE_TEXT } from '../input.js';
 import type { CreateLabelDTO, UpdateLabelDTO } from './label.dto.js';
 import type { LabelService } from './label.service.js';
 
 const labelProperties = {
-  // At least one non-whitespace character
-  name: { type: 'string', pattern: '\\S' },
+  name: { type: 'string', maxLength: LIMITS.labelNameLength, pattern: SINGLE_LINE_TEXT },
   // Hex colour, e.g. #ff8800
   color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
 } as const;

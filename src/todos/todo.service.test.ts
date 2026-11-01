@@ -142,4 +142,24 @@ describe('TodoService', () => {
       await expect(service.update(created.id, { labelIds: ['nope'] })).rejects.toBeInstanceOf(ValidationError);
     });
   });
+
+  describe('unicode normalization', () => {
+    // "é" typed as e + combining accent, versus the single precomposed character
+    const decomposed = 'Café';
+    const composed = 'Café';
+
+    it('stores titles and descriptions in NFC form', async () => {
+      const created = await service.create({ title: decomposed, description: decomposed });
+      expect(created.title).toBe(composed);
+      expect(created.description).toBe(composed);
+      const updated = await service.update(created.id, { title: `x${decomposed}`, description: decomposed });
+      expect(updated.title).toBe(`x${composed}`);
+      expect(updated.description).toBe(composed);
+    });
+
+    it('leaves emoji sequences intact', async () => {
+      const family = '👨‍👩‍👧‍👦';
+      expect((await service.create({ title: 'a', description: family })).description).toBe(family);
+    });
+  });
 });

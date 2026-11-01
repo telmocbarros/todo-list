@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NotFoundError, ValidationError } from '../errors.js';
+import { cleanText, normalizeText } from '../input.js';
 import type { ILabelRepository } from '../labels/label.repository.js';
 import { DEFAULT_PRIORITY } from './priority.js';
 import type { CreateTodoDTO, UpdateTodoDTO } from './todo.dto.js';
@@ -38,8 +39,8 @@ export class TodoService {
     const now = new Date().toISOString();
     return this.repository.save({
       id: randomUUID(),
-      title: title.trim(),
-      description,
+      title: cleanText(title),
+      description: normalizeText(description),
       completed: false,
       priority,
       labelIds: resolvedLabelIds,
@@ -51,12 +52,14 @@ export class TodoService {
 
   async update(id: string, patch: UpdateTodoDTO): Promise<TodoModel> {
     const existing = await this.get(id);
-    const title = patch.title?.trim();
+    const title = patch.title && cleanText(patch.title);
+    const description = patch.description && normalizeText(patch.description);
     const labelIds = patch.labelIds && (await this.resolveLabelIds(patch.labelIds));
     return this.repository.save({
       ...existing,
       ...patch,
       ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
       ...(labelIds !== undefined && { labelIds }),
       ...(patch.dueDate !== undefined && { dueDate: normalizeDate(patch.dueDate) }),
       updatedAt: new Date().toISOString(),

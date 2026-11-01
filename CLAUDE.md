@@ -37,5 +37,6 @@ A Fastify REST API for todos (`/todos`) and user-defined labels (`/labels`), plu
 
 - ESM project (`"type": "module"`, `NodeNext` resolution): relative imports must use the `.js` extension, even though the sources are `.ts` (e.g. `import { buildApp } from './app.js'`).
 - TypeScript is `strict`; ES2022 target.
+- Input handling: controllers validate shape and size with JSON schemas, using the limits and patterns in `src/input.ts` (string lengths count characters, not bytes). Services canonicalize with `cleanText`/`normalizeText` (Unicode NFC, trim) so they stay correct for any caller. Text is stored exactly as sent and escaped where it is used (SQL is parameterized by Drizzle, HTML is the UI's job), never stripped on input.
 - The SQLite driver is `@libsql/client` (not `better-sqlite3`, whose database constructor hung in this environment).
 - Naming: interfaces are prefixed `I` (`ITodoRepository`), type aliases `T` (`TPriority`), entity models end in `Model` (`TodoModel`, an interface without the `I`), and request-body shapes end in `DTO` (`CreateTodoDTO`). An interface and its implementation live in the same file, and the implementation takes the plain name (`ITodoRepository` + `TodoRepository`), never one naming the database or ORM.

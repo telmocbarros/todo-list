@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '../errors.js';
+import { cleanText } from '../input.js';
 import type { ITodoRepository } from '../todos/todo.repository.js';
 import type { CreateLabelDTO, UpdateLabelDTO } from './label.dto.js';
 import type { LabelModel } from './label.model.js';
@@ -27,14 +28,14 @@ export class LabelService {
   }
 
   async create({ name, color }: CreateLabelDTO): Promise<LabelModel> {
-    const trimmed = name.trim();
-    await this.assertNameAvailable(trimmed);
-    return this.repository.save({ id: randomUUID(), name: trimmed, color });
+    const cleaned = cleanText(name);
+    await this.assertNameAvailable(cleaned);
+    return this.repository.save({ id: randomUUID(), name: cleaned, color });
   }
 
   async update(id: string, patch: UpdateLabelDTO): Promise<LabelModel> {
     const existing = await this.get(id);
-    const name = patch.name?.trim();
+    const name = patch.name && cleanText(patch.name);
     if (name !== undefined) await this.assertNameAvailable(name, id);
     return this.repository.save({ ...existing, ...patch, ...(name !== undefined && { name }) });
   }
