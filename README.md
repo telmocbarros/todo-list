@@ -4,7 +4,7 @@ A REST API for managing todos, built with Node.js, TypeScript, Fastify and SQLit
 
 Todos have a title, description, priority, due date and labels. You create the labels yourself. Data is stored in a local SQLite file, so it survives restarts.
 
-> **Status:** early. You can create an account and sign in, but todos and labels are not yet tied to an account or protected by login: anyone who can reach the server can read and change them. Run it on localhost or a private network only. See [ROADMAP.md](ROADMAP.md) for what is planned.
+> **Status:** early. Each user has their own todos and labels, and they require signing in. There is no email verification or password reset yet. See [ROADMAP.md](ROADMAP.md) for what is planned.
 
 ## Quick start
 
@@ -73,6 +73,10 @@ curl -c cookies.txt -X POST localhost:3000/auth/login \
 curl -b cookies.txt localhost:3000/me
 ```
 
+### Todos and labels belong to you
+
+Every todo and label route needs the session cookie and answers `401` without it. You only ever see your own: another user's todo or label answers `404`, exactly like one that does not exist, so ids cannot be probed. `GET /priorities` stays public, since it holds no user data.
+
 ### Todos
 
 | Method | Path | Description |
@@ -120,7 +124,7 @@ curl -b cookies.txt localhost:3000/me
 | `PATCH` | `/labels/:id` | Rename or recolor a label |
 | `DELETE` | `/labels/:id` | Delete a label. It is also removed from every todo using it |
 
-A label has a `name` (up to 50 characters, unique ignoring case) and a `color` as a hex code such as `#3366ff`. Both are required on create.
+A label has a `name` (up to 50 characters, unique among your labels, ignoring case) and a `color` as a hex code such as `#3366ff`. Both are required on create.
 
 ### Errors
 

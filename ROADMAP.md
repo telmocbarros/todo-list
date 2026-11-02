@@ -55,14 +55,14 @@ Accounts, so there is someone to own data.
 - [x] Session cookie via `@fastify/cookie`, with `HttpOnly`, `Secure` and `SameSite=Lax` set.
 - [x] A `requireUser` hook that loads the session and puts the user on the request. Controllers read it with `currentUser(req)` and pass the id to services.
 - [x] Add `UnauthorizedError` (401) to `src/errors.ts` and to the `statusByError` table in `src/app.ts`.
-- [x] `ForbiddenError` (403), first used by the CSRF check. The todo and label routes still stay open until phase 3, so that their tests change once, together with ownership.
+- [x] `ForbiddenError` (403), first used by the CSRF check.
 - [x] CSRF protection, as a second layer under `SameSite=Lax` cookies and JSON-only bodies: writes the browser marks as cross-site (`Sec-Fetch-Site`, or a foreign `Origin` on older browsers) get 403. Clients sending neither header, such as curl, are allowed. `ALLOWED_ORIGINS` lets a UI on another origin through.
 - [x] Rate limits per IP: login 10 per 15 minutes, signup 5 per hour. 429 with `Retry-After`, checked before the body is parsed or a password is hashed.
 - [x] Our own sliding-window limiter next to `@fastify/rate-limit`, chosen by `RATE_LIMITER` (`plugin` by default). Brought forward from phase 7 because login needed a limit; the same tests run against both.
 - [x] Login does the same work whether or not the account exists: when no user is found it still verifies the password against a fixed dummy hash, and every failure returns one generic "invalid email or password". Without this, an unknown email answers in about 1 ms and a wrong password in about 15 ms, which tells an attacker which emails are registered.
 - [ ] Known gap until phase 2: a duplicate signup returns before hashing the password, so it is faster than a real signup. Phase 2 closes it by making signup answer identically.
 
-**Risk** — when phase 3 protects the todo and label routes, every existing API test needs a signed-in user to act as. `createTestRepositories()` already returns the user and session repositories.
+**Tests** — API tests act as a signed-in user through `signUpAndLogIn` and `as` in `src/test/auth.ts`; repository and service tests create users directly with `createTestUser` in `src/test/users.ts`.
 
 ---
 
@@ -97,21 +97,22 @@ Sending email, and the two flows that depend on it. It also closes the account-e
 
 ## Phase 3 — Ownership scoping
 
-The riskiest phase: it touches every query. Until it lands, accounts exist but data is still shared.
+The riskiest phase: it touches every query. Done: each user's todos and labels are their own.
 
 **Schema**
 
-- [ ] `user_id` on `todos` and `labels`, referencing `users.id` with cascade delete.
-- [ ] Change `labels_name_unique` from `lower(name)` to `(user_id, lower(name))`, so label names are unique per user instead of globally.
+- [x] `user_id` on `todos` and `labels`, referencing `users.id` with cascade delete. Deleting a user deletes their todos, labels and sessions, and nothing else.
+- [x] `labels_name_unique` became `labels_user_name_unique` on `(user_id, lower(name))`, so label names are unique per user instead of globally.
 
 **Work**
 
-- [ ] Every repository method takes the owner: `findAll(userId)`, `findById(userId, id)`, `delete(userId, id)`, `findByName(userId, name)`, `removeLabel(userId, labelId)`.
-- [ ] The **controller** resolves the user — the auth hook turns the session cookie into a user, and the controller reads its id and passes it to the service as a plain `userId: string`. Services take an owner id as an argument and know nothing about requests, cookies or sessions; they must not import Fastify types.
-- [ ] Another user's todo returns **404, not 403**, so the API does not reveal which ids exist.
-- [ ] A cross-user isolation test suite: user A must not read, update, delete, or attach labels belonging to user B.
+- [x] Every repository method takes the owner: `findAll(userId)`, `findById(userId, id)`, `save(userId, …)`, `delete(userId, id)`, `findByName(userId, name)`, `removeLabel(userId, labelId)`. Saving an id that belongs to another user changes nothing and throws. The owner stays inside the repository: models and API responses carry no `userId`.
+- [x] The **controller** resolves the user — the auth hook turns the session cookie into a user, and the controller reads its id and passes it to the service as a plain `userId: string`. Services take an owner id as an argument and know nothing about requests, cookies or sessions; they must not import Fastify types.
+- [x] Every todo and label route requires a session, checked as `onRequest` so an anonymous caller gets 401 before any body validation. `/priorities` stays public.
+- [x] Another user's todo returns **404, not 403**, so the API does not reveal which ids exist.
+- [x] A cross-user isolation test suite (`src/app.ownership.test.ts`): user A cannot read, update, delete, or attach labels belonging to user B.
 
-**Migration** — SQLite cannot add a `NOT NULL` foreign key to a table that already has rows, so the local database is reset as part of this phase and the column is `NOT NULL` from the start. There is no production data to preserve.
+**Migration** — `0003` is hand-written. drizzle-kit generated `ALTER TABLE … ADD user_id NOT NULL REFERENCES users(id)`, which fails on any table that has rows and dropped `ON DELETE CASCADE`. SQLite cannot add a `NOT NULL` foreign key in place, so the migration rebuilds the three tables, discarding existing todos and labels (nothing was deployed; the local database was empty). Later changes that touch populated tables must copy rows across instead, and every generated migration needs reading before it is committed.
 
 ---
 
