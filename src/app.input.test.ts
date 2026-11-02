@@ -1,16 +1,19 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
+import { as, signUpAndLogIn } from './test/auth.js';
 import { createTestRepositories } from './test/repositories.js';
 
 describe('input validation limits', () => {
   let app: FastifyInstance;
+  let api: ReturnType<typeof as>;
   let closeDatabase: () => void;
 
   beforeEach(async () => {
     const { close, ...repositories } = await createTestRepositories();
     closeDatabase = close;
     app = buildApp(repositories);
+    api = as(app, await signUpAndLogIn(app));
   });
 
   afterEach(async () => {
@@ -18,8 +21,8 @@ describe('input validation limits', () => {
     closeDatabase();
   });
 
-  const createTodo = (payload: object) => app.inject({ method: 'POST', url: '/todos', payload });
-  const createLabel = (payload: object) => app.inject({ method: 'POST', url: '/labels', payload });
+  const createTodo = (payload: object) => api({ method: 'POST', url: '/todos', payload });
+  const createLabel = (payload: object) => api({ method: 'POST', url: '/labels', payload });
   const status = async (res: ReturnType<typeof createTodo>) => (await res).statusCode;
 
   describe('todo title', () => {
@@ -40,7 +43,7 @@ describe('input validation limits', () => {
 
     it('applies the same limits on update', async () => {
       const { id } = (await createTodo({ title: 'a' })).json();
-      const patch = (payload: object) => app.inject({ method: 'PATCH', url: `/todos/${id}`, payload });
+      const patch = (payload: object) => api({ method: 'PATCH', url: `/todos/${id}`, payload });
       expect((await patch({ title: 'a'.repeat(201) })).statusCode).toBe(400);
       expect((await patch({ title: 'bad\nline' })).statusCode).toBe(400);
     });

@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyRequest, onRequestAsyncHookHandler } from 'fastify';
 import { UnauthorizedError } from '../errors.js';
 import { LIMITS } from '../input.js';
 import type { TRateLimitRouteOptions } from '../rate-limit/rate-limit.js';
@@ -15,8 +15,11 @@ declare module 'fastify' {
   }
 }
 
-/** Route hook: resolves the session cookie to a user, or rejects the request with 401. */
-export const createRequireUser = (auth: AuthService) => async (req: FastifyRequest) => {
+/**
+ * Route hook: resolves the session cookie to a user, or rejects the request with 401.
+ * Used as `onRequest`, so it runs before the body is validated: anonymous callers learn nothing else.
+ */
+export const createRequireUser = (auth: AuthService): onRequestAsyncHookHandler => async (req) => {
   const token = req.cookies[SESSION_COOKIE];
   const user = token ? await auth.authenticate(token) : undefined;
   if (!user) throw new UnauthorizedError('Authentication required');

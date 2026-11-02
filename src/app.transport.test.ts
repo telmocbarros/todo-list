@@ -64,9 +64,10 @@ describe('transport: HTTPS and reverse proxy', () => {
     await app.listen({ port: 0, host: '127.0.0.1' });
     const { port } = app.server.address() as AddressInfo;
 
-    const res = await get(port, '/todos');
+    // A public route, so this tests the transport alone, not authentication
+    const res = await get(port, '/priorities');
     expect(res.status).toBe(200);
-    expect(JSON.parse(res.body)).toEqual([]);
+    expect(JSON.parse(res.body)).toHaveLength(3);
   });
 
   describe('behind a reverse proxy', () => {
@@ -77,7 +78,7 @@ describe('transport: HTTPS and reverse proxy', () => {
       app.addHook('onRequest', async (req) => {
         seen = req.ip;
       });
-      await app.inject({ method: 'GET', url: '/todos', headers: { 'x-forwarded-for': '203.0.113.7' } });
+      await app.inject({ method: 'GET', url: '/priorities', headers: { 'x-forwarded-for': '203.0.113.7' } });
       return seen;
     };
 

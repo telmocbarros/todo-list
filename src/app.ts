@@ -79,8 +79,8 @@ export const buildApp = (
   app.register(async (api) => {
     registerAuthRoutes(api, auth, rateLimits.login);
     registerUserRoutes(api, new UserService(userRepository, hasher), requireUser, rateLimits.signup);
-    registerTodoRoutes(api, new TodoService(todoRepository, labelRepository));
-    registerLabelRoutes(api, new LabelService(labelRepository, todoRepository));
+    registerTodoRoutes(api, new TodoService(todoRepository, labelRepository), requireUser);
+    registerLabelRoutes(api, new LabelService(labelRepository, todoRepository), requireUser);
   });
 
   return app;

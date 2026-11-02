@@ -1,4 +1,4 @@
-import type { FastifyInstance, preHandlerAsyncHookHandler } from 'fastify';
+import type { FastifyInstance, onRequestAsyncHookHandler } from 'fastify';
 import { currentUser } from '../auth/auth.controller.js';
 import { LIMITS, SINGLE_LINE_TEXT, USERNAME } from '../input.js';
 import type { TRateLimitRouteOptions } from '../rate-limit/rate-limit.js';
@@ -10,7 +10,7 @@ const personName = { type: 'string', maxLength: LIMITS.personNameLength, pattern
 export const registerUserRoutes = (
   app: FastifyInstance,
   service: UserService,
-  requireUser: preHandlerAsyncHookHandler,
+  requireUser: onRequestAsyncHookHandler,
   signupRateLimit: TRateLimitRouteOptions,
 ): void => {
   app.post<{ Body: SignupDTO }>(
@@ -44,5 +44,5 @@ export const registerUserRoutes = (
     async (req, reply) => reply.code(201).send(await service.signup(req.body)),
   );
 
-  app.get('/me', { preHandler: requireUser }, async (req) => service.get(currentUser(req).id));
+  app.get('/me', { onRequest: requireUser }, async (req) => service.get(currentUser(req).id));
 };

@@ -34,14 +34,21 @@ export const labels = sqliteTable(
   'labels',
   {
     id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     color: text('color').notNull(),
   },
-  (table) => [uniqueIndex('labels_name_unique').on(sql`lower(${table.name})`)],
+  // Names are unique per user, ignoring case: two people can both have a "Work" label
+  (table) => [uniqueIndex('labels_user_name_unique').on(table.userId, sql`lower(${table.name})`)],
 );
 
 export const todos = sqliteTable('todos', {
   id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   description: text('description').notNull(),
   completed: integer('completed', { mode: 'boolean' }).notNull(),

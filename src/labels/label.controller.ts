@@ -1,4 +1,5 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, onRequestAsyncHookHandler } from 'fastify';
+import { currentUser } from '../auth/auth.controller.js';
 import { idParams, type IIdParams } from '../http.js';
 import { LIMITS, SINGLE_LINE_TEXT } from '../input.js';
 import type { CreateLabelDTO, UpdateLabelDTO } from './label.dto.js';
@@ -10,16 +11,24 @@ const labelProperties = {
   color: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
 } as const;
 
-export const registerLabelRoutes = (app: FastifyInstance, service: LabelService): void => {
-  app.get('/labels', async () => service.list());
+export const registerLabelRoutes = (
+  app: FastifyInstance,
+  service: LabelService,
+  requireUser: onRequestAsyncHookHandler,
+): void => {
+  // Every label route needs a signed-in user, checked before the body is validated
+  const signedIn = { onRequest: requireUser };
 
-  app.get<{ Params: IIdParams }>('/labels/:id', { schema: { params: idParams } }, async (req) =>
-    service.get(req.params.id),
+  app.get('/labels', signedIn, async (req) => service.list(currentUser(req).id));
+
+  app.get<{ Params: IIdParams }>('/labels/:id', { ...signedIn, schema: { params: idParams } }, async (req) =>
+    service.get(currentUser(req).id, req.params.id),
   );
 
   app.post<{ Body: CreateLabelDTO }>(
     '/labels',
     {
+      ...signedIn,
       schema: {
         body: {
           type: 'object',
@@ -29,12 +38,13 @@ export const registerLabelRoutes = (app: FastifyInstance, service: LabelService)
         },
       },
     },
-    async (req, reply) => reply.code(201).send(await service.create(req.body)),
+    async (req, reply) => reply.code(201).send(await service.create(currentUser(req).id, req.body)),
   );
 
   app.patch<{ Params: IIdParams; Body: UpdateLabelDTO }>(
     '/labels/:id',
     {
+      ...signedIn,
       schema: {
         params: idParams,
         body: {
@@ -45,11 +55,15 @@ export const registerLabelRoutes = (app: FastifyInstance, service: LabelService)
         },
       },
     },
-    async (req) => service.update(req.params.id, req.body),
+    async (req) => service.update(currentUser(req).id, req.params.id, req.body),
   );
 
-  app.delete<{ Params: IIdParams }>('/labels/:id', { schema: { params: idParams } }, async (req, reply) => {
-    await service.remove(req.params.id);
-    return reply.code(204).send();
-  });
+  app.delete<{ Params: IIdParams }>(
+    '/labels/:id',
+    { ...signedIn, schema: { params: idParams } },
+    async (req, reply) => {
+      await service.remove(currentUser(req).id, req.params.id);
+      return reply.code(204).send();
+    },
+  );
 };

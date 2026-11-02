@@ -6,42 +6,46 @@ import type { CreateLabelDTO, UpdateLabelDTO } from './label.dto.js';
 import type { LabelModel } from './label.model.js';
 import type { ILabelRepository } from './label.repository.js';
 
+/**
+ * Every method acts on behalf of one user, `userId`. Names are unique per user, and another user's
+ * label is reported as not found, so the API never reveals which ids exist.
+ */
 export class LabelService {
   constructor(
     private readonly repository: ILabelRepository,
     private readonly todos: ITodoRepository,
   ) {}
 
-  private async assertNameAvailable(name: string, ownId?: string): Promise<void> {
-    const existing = await this.repository.findByName(name);
+  private async assertNameAvailable(userId: string, name: string, ownId?: string): Promise<void> {
+    const existing = await this.repository.findByName(userId, name);
     if (existing && existing.id !== ownId) throw new ConflictError(`Label "${name}" already exists`);
   }
 
-  list(): Promise<LabelModel[]> {
-    return this.repository.findAll();
+  list(userId: string): Promise<LabelModel[]> {
+    return this.repository.findAll(userId);
   }
 
-  async get(id: string): Promise<LabelModel> {
-    const label = await this.repository.findById(id);
+  async get(userId: string, id: string): Promise<LabelModel> {
+    const label = await this.repository.findById(userId, id);
     if (!label) throw new NotFoundError('Label');
     return label;
   }
 
-  async create({ name, color }: CreateLabelDTO): Promise<LabelModel> {
+  async create(userId: string, { name, color }: CreateLabelDTO): Promise<LabelModel> {
     const cleaned = cleanText(name);
-    await this.assertNameAvailable(cleaned);
-    return this.repository.save({ id: randomUUID(), name: cleaned, color });
+    await this.assertNameAvailable(userId, cleaned);
+    return this.repository.save(userId, { id: randomUUID(), name: cleaned, color });
   }
 
-  async update(id: string, patch: UpdateLabelDTO): Promise<LabelModel> {
-    const existing = await this.get(id);
+  async update(userId: string, id: string, patch: UpdateLabelDTO): Promise<LabelModel> {
+    const existing = await this.get(userId, id);
     const name = patch.name && cleanText(patch.name);
-    if (name !== undefined) await this.assertNameAvailable(name, id);
-    return this.repository.save({ ...existing, ...patch, ...(name !== undefined && { name }) });
+    if (name !== undefined) await this.assertNameAvailable(userId, name, id);
+    return this.repository.save(userId, { ...existing, ...patch, ...(name !== undefined && { name }) });
   }
 
-  async remove(id: string): Promise<void> {
-    if (!(await this.repository.delete(id))) throw new NotFoundError('Label');
-    await this.todos.removeLabel(id);
+  async remove(userId: string, id: string): Promise<void> {
+    if (!(await this.repository.delete(userId, id))) throw new NotFoundError('Label');
+    await this.todos.removeLabel(userId, id);
   }
 }

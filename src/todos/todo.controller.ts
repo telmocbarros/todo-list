@@ -1,4 +1,5 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, onRequestAsyncHookHandler } from 'fastify';
+import { currentUser } from '../auth/auth.controller.js';
 import { idParams, type IIdParams } from '../http.js';
 import { LIMITS, MULTI_LINE_TEXT, SINGLE_LINE_TEXT } from '../input.js';
 import { PRIORITIES } from './priority.js';
@@ -22,18 +23,27 @@ const createProperties = {
 // New todos always start incomplete, so `completed` can only be changed afterwards
 const patchProperties = { ...createProperties, completed: { type: 'boolean' } } as const;
 
-export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): void => {
+export const registerTodoRoutes = (
+  app: FastifyInstance,
+  service: TodoService,
+  requireUser: onRequestAsyncHookHandler,
+): void => {
+  // Public: the fixed list holds no user data
   app.get('/priorities', async () => PRIORITIES);
 
-  app.get('/todos', async () => service.list());
+  // Every todo route needs a signed-in user, checked before the body is validated
+  const signedIn = { onRequest: requireUser };
 
-  app.get<{ Params: IIdParams }>('/todos/:id', { schema: { params: idParams } }, async (req) =>
-    service.get(req.params.id),
+  app.get('/todos', signedIn, async (req) => service.list(currentUser(req).id));
+
+  app.get<{ Params: IIdParams }>('/todos/:id', { ...signedIn, schema: { params: idParams } }, async (req) =>
+    service.get(currentUser(req).id, req.params.id),
   );
 
   app.post<{ Body: CreateTodoDTO }>(
     '/todos',
     {
+      ...signedIn,
       schema: {
         body: {
           type: 'object',
@@ -43,12 +53,13 @@ export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): 
         },
       },
     },
-    async (req, reply) => reply.code(201).send(await service.create(req.body)),
+    async (req, reply) => reply.code(201).send(await service.create(currentUser(req).id, req.body)),
   );
 
   app.patch<{ Params: IIdParams; Body: UpdateTodoDTO }>(
     '/todos/:id',
     {
+      ...signedIn,
       schema: {
         params: idParams,
         body: {
@@ -59,11 +70,15 @@ export const registerTodoRoutes = (app: FastifyInstance, service: TodoService): 
         },
       },
     },
-    async (req) => service.update(req.params.id, req.body),
+    async (req) => service.update(currentUser(req).id, req.params.id, req.body),
   );
 
-  app.delete<{ Params: IIdParams }>('/todos/:id', { schema: { params: idParams } }, async (req, reply) => {
-    await service.remove(req.params.id);
-    return reply.code(204).send();
-  });
+  app.delete<{ Params: IIdParams }>(
+    '/todos/:id',
+    { ...signedIn, schema: { params: idParams } },
+    async (req, reply) => {
+      await service.remove(currentUser(req).id, req.params.id);
+      return reply.code(204).send();
+    },
+  );
 };
