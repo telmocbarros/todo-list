@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTestRepositories } from '../test/repositories.js';
+import { createTestDependencies } from '../test/dependencies.js';
 import { createTestUser } from '../test/users.js';
 import type { EmailTokenModel } from './email-token.model.js';
 import type { IEmailTokenRepository } from './email-token.repository.js';
@@ -20,7 +20,7 @@ describe('EmailTokenRepository', () => {
   });
 
   beforeEach(async () => {
-    const { emailTokenRepository, userRepository, close } = await createTestRepositories();
+    const { emailTokenRepository, userRepository, close } = await createTestDependencies();
     tokens = emailTokenRepository;
     closeDatabase = close;
     await createTestUser(userRepository, 'u1');

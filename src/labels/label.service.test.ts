@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ConflictError, NotFoundError } from '../errors.js';
-import { createTestRepositories } from '../test/repositories.js';
+import { createTestDependencies } from '../test/dependencies.js';
 import { createTestUser } from '../test/users.js';
 import { TodoService } from '../todos/todo.service.js';
 import { LabelService } from './label.service.js';
@@ -15,7 +15,7 @@ describe('LabelService', () => {
   let bob: string;
 
   beforeEach(async () => {
-    const { todoRepository, labelRepository, userRepository, close } = await createTestRepositories();
+    const { todoRepository, labelRepository, userRepository, close } = await createTestDependencies();
     closeDatabase = close;
     service = new LabelService(labelRepository, todoRepository);
     todos = new TodoService(todoRepository, labelRepository);

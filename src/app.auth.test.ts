@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
 import { signUpAndLogIn as signUpAndLogInAs } from './test/auth.js';
 import type { TestMailbox } from './test/mailbox.js';
-import { createTestRepositories } from './test/repositories.js';
+import { createTestDependencies } from './test/dependencies.js';
 
 const signup = {
   email: 'ada@example.com',
@@ -21,7 +21,7 @@ describe('auth API', () => {
   let closeDatabase: () => void;
 
   beforeEach(async () => {
-    const { close, ...repositories } = await createTestRepositories();
+    const { close, ...repositories } = await createTestDependencies();
     closeDatabase = close;
     mailbox = repositories.emailSender;
     app = buildApp(repositories);

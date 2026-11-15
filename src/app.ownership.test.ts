@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
 import { as, signUpAndLogIn } from './test/auth.js';
-import { createTestRepositories } from './test/repositories.js';
+import { createTestDependencies } from './test/dependencies.js';
 
 describe('ownership: users only ever see and change their own data', () => {
   let app: FastifyInstance;
@@ -11,7 +11,7 @@ describe('ownership: users only ever see and change their own data', () => {
   let closeDatabase: () => void;
 
   beforeEach(async () => {
-    const { close, ...repositories } = await createTestRepositories();
+    const { close, ...repositories } = await createTestDependencies();
     closeDatabase = close;
     app = buildApp(repositories);
     ada = as(app, await signUpAndLogIn(app, repositories.emailSender, 'ada'));

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
 import { RATE_LIMITERS } from './config.js';
 import type { TestMailbox } from './test/mailbox.js';
-import { createTestRepositories } from './test/repositories.js';
+import { createTestDependencies } from './test/dependencies.js';
 
 const account = {
   email: 'ada@example.com',
@@ -20,7 +20,7 @@ describe.each(RATE_LIMITERS)('rate limiting (%s limiter)', (rateLimiter) => {
   let closeDatabase: () => void;
 
   beforeEach(async () => {
-    const { close, ...repositories } = await createTestRepositories();
+    const { close, ...repositories } = await createTestDependencies();
     closeDatabase = close;
     mailbox = repositories.emailSender;
     app = buildApp(repositories, { rateLimiter });

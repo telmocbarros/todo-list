@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ForbiddenError, UnauthorizedError } from '../errors.js';
-import { createTestRepositories } from '../test/repositories.js';
+import { createTestDependencies } from '../test/dependencies.js';
 import type { IUserRepository } from '../users/user.repository.js';
 import { AuthService } from './auth.service.js';
 import { type IPasswordHasher, PasswordHasher } from './password-hasher.js';
@@ -33,7 +33,7 @@ describe('AuthService', () => {
   let closeDatabase: () => void;
 
   beforeEach(async () => {
-    const { userRepository, sessionRepository, close } = await createTestRepositories();
+    const { userRepository, sessionRepository, close } = await createTestDependencies();
     closeDatabase = close;
     sessions = sessionRepository;
     hasher = new CountingHasher();

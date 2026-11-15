@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTestRepositories } from '../test/repositories.js';
+import { createTestDependencies } from '../test/dependencies.js';
 import type { UserModel } from './user.model.js';
 import type { IUserRepository } from './user.repository.js';
 
@@ -22,7 +22,7 @@ describe('UserRepository', () => {
   let closeDatabase: () => void;
 
   beforeEach(async () => {
-    const { userRepository, close } = await createTestRepositories();
+    const { userRepository, close } = await createTestDependencies();
     users = userRepository;
     closeDatabase = close;
   });

@@ -1,14 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
-import { createTestRepositories } from './test/repositories.js';
+import { createTestDependencies } from './test/dependencies.js';
 
 describe('health check', () => {
   let app: FastifyInstance;
   let closeDatabase: () => void;
 
   beforeEach(async () => {
-    const { close, ...repositories } = await createTestRepositories();
+    const { close, ...repositories } = await createTestDependencies();
     closeDatabase = close;
     app = buildApp(repositories);
   });

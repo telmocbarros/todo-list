@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTestRepositories } from '../test/repositories.js';
+import { createTestDependencies } from '../test/dependencies.js';
 import { createTestUser } from '../test/users.js';
 import type { LabelModel } from './label.model.js';
 import type { ILabelRepository } from './label.repository.js';
@@ -13,7 +13,7 @@ describe('ILabelRepository', () => {
   let closeDatabase: () => void;
 
   beforeEach(async () => {
-    const { labelRepository, userRepository, close } = await createTestRepositories();
+    const { labelRepository, userRepository, close } = await createTestDependencies();
     labels = labelRepository;
     closeDatabase = close;
     ada = await createTestUser(userRepository, 'ada');

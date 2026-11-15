@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
-import { createTestRepositories } from './test/repositories.js';
+import { createTestDependencies } from './test/dependencies.js';
 
 describe('transport: HTTPS and reverse proxy', () => {
   let dir: string;
@@ -15,7 +15,7 @@ describe('transport: HTTPS and reverse proxy', () => {
   let cert: Buffer;
   let app: FastifyInstance | undefined;
   let closeDatabase: () => void;
-  let repositories: Awaited<ReturnType<typeof createTestRepositories>>;
+  let repositories: Awaited<ReturnType<typeof createTestDependencies>>;
 
   // A throwaway self-signed certificate for localhost
   beforeAll(() => {
@@ -38,7 +38,7 @@ describe('transport: HTTPS and reverse proxy', () => {
   });
 
   beforeEach(async () => {
-    repositories = await createTestRepositories();
+    repositories = await createTestDependencies();
     closeDatabase = repositories.close;
   });
 

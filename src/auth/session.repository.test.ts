@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTestRepositories } from '../test/repositories.js';
+import { createTestDependencies } from '../test/dependencies.js';
 import type { IUserRepository } from '../users/user.repository.js';
 import type { SessionModel } from './session.model.js';
 import type { ISessionRepository } from './session.repository.js';
@@ -18,7 +18,7 @@ describe('SessionRepository', () => {
   });
 
   beforeEach(async () => {
-    const { sessionRepository, userRepository, close } = await createTestRepositories();
+    const { sessionRepository, userRepository, close } = await createTestDependencies();
     sessions = sessionRepository;
     users = userRepository;
     closeDatabase = close;

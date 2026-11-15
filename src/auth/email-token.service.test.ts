@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTestRepositories } from '../test/repositories.js';
+import { createTestDependencies } from '../test/dependencies.js';
 import { createTestUser } from '../test/users.js';
 import type { IEmailTokenRepository } from './email-token.repository.js';
 import { EmailTokenService } from './email-token.service.js';
@@ -17,7 +17,7 @@ describe('EmailTokenService', () => {
   const later = (ms: number) => (now = new Date(now.getTime() + ms));
 
   beforeEach(async () => {
-    const { emailTokenRepository, userRepository, close } = await createTestRepositories();
+    const { emailTokenRepository, userRepository, close } = await createTestDependencies();
     closeDatabase = close;
     repository = emailTokenRepository;
     now = new Date('2030-01-01T00:00:00.000Z');

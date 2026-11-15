@@ -10,7 +10,7 @@ import { TestMailbox } from './mailbox.js';
  * Fresh, isolated repositories backed by an in-memory SQLite database (same code path as production),
  * plus a mailbox that records email instead of sending it: everything `buildApp` needs.
  */
-export const createTestRepositories = async () => {
+export const createTestDependencies = async () => {
   const { db, close } = await createDatabase(':memory:');
   return {
     todoRepository: new TodoRepository(db),

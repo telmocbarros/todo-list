@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
 import { as, signUpAndLogIn } from './test/auth.js';
-import { createTestRepositories } from './test/repositories.js';
+import { createTestDependencies } from './test/dependencies.js';
 
 describe('input validation limits', () => {
   let app: FastifyInstance;
@@ -10,7 +10,7 @@ describe('input validation limits', () => {
   let closeDatabase: () => void;
 
   beforeEach(async () => {
-    const { close, ...repositories } = await createTestRepositories();
+    const { close, ...repositories } = await createTestDependencies();
     closeDatabase = close;
     app = buildApp(repositories);
     api = as(app, await signUpAndLogIn(app, repositories.emailSender));

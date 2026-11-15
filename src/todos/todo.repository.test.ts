@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { ILabelRepository } from '../labels/label.repository.js';
-import { createTestRepositories } from '../test/repositories.js';
+import { createTestDependencies } from '../test/dependencies.js';
 import { createTestUser } from '../test/users.js';
 import type { TodoModel } from './todo.model.js';
 import type { ITodoRepository } from './todo.repository.js';
@@ -29,7 +29,7 @@ describe('ITodoRepository', () => {
   const addLabel = async (id: string, owner = ada) => labels.save(owner, { id, name: id, color: '#000000' });
 
   beforeEach(async () => {
-    const { todoRepository, labelRepository, userRepository, close } = await createTestRepositories();
+    const { todoRepository, labelRepository, userRepository, close } = await createTestDependencies();
     todos = todoRepository;
     labels = labelRepository;
     closeDatabase = close;

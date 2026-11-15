@@ -4,7 +4,7 @@ import { PasswordHasher } from '../auth/password-hasher.js';
 import { AccountEmails } from '../email/account-emails.js';
 import { NotFoundError, ValidationError } from '../errors.js';
 import { TestMailbox } from '../test/mailbox.js';
-import { createTestRepositories } from '../test/repositories.js';
+import { createTestDependencies } from '../test/dependencies.js';
 import type { SignupDTO } from './user.dto.js';
 import type { IUserRepository } from './user.repository.js';
 import { UserService } from './user.service.js';
@@ -26,7 +26,7 @@ describe('UserService', () => {
   let closeDatabase: () => void;
 
   beforeEach(async () => {
-    const { userRepository, emailTokenRepository, close } = await createTestRepositories();
+    const { userRepository, emailTokenRepository, close } = await createTestDependencies();
     repository = userRepository;
     closeDatabase = close;
     mailbox = new TestMailbox();

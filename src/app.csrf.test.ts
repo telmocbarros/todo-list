@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp, type IAppOptions } from './app.js';
-import { createTestRepositories } from './test/repositories.js';
+import { createTestDependencies } from './test/dependencies.js';
 
 // The browser adds Sec-Fetch-Site and Origin itself, and a page cannot forge them.
 describe('CSRF: cross-site writes are blocked', () => {
@@ -9,7 +9,7 @@ describe('CSRF: cross-site writes are blocked', () => {
   let closeDatabase: () => void;
 
   const start = async (options: IAppOptions = {}) => {
-    const { close, ...repositories } = await createTestRepositories();
+    const { close, ...repositories } = await createTestDependencies();
     closeDatabase = close;
     app = buildApp(repositories, options);
   };
