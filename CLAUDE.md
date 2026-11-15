@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run db:generate` — after editing `src/db/schema.ts`, generate a SQL migration into `migrations/` (commit it); migrations are applied automatically at startup. Read every generated migration before committing: for SQLite, drizzle-kit emits `ALTER TABLE … ADD … NOT NULL REFERENCES …`, which fails on tables with rows and silently drops `ON DELETE CASCADE`. `0003` is hand-written for that reason (it rebuilds the tables). Verify foreign keys with `PRAGMA foreign_key_list(<table>)`, and that `db:generate` then reports no changes.
 - `npm test` — run Vitest once; `npm run test:watch` for watch mode; single file/test: `npx vitest run src/app.test.ts -t "<name>"`
 
+- `docker compose up -d` — local services from `compose.yaml`: Mailpit (SMTP on 1025, inbox at http://localhost:8025) and Postgres on 5432, which the app does not use yet (it is on SQLite). Both bind to 127.0.0.1 only.
+
 There is no linter configured yet. Tests are colocated as `src/**/*.test.ts`, and the project is developed test-first (write the failing test, then the implementation). The server listens on `PORT` (default 3000) and stores data in the SQLite file at `DATABASE_PATH` (default `./data/todo-list.db`, git-ignored).
 
 Configuration comes from environment variables, parsed and validated in `src/config.ts` (`loadConfig`):

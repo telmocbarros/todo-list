@@ -1,0 +1,31 @@
+# Local development services. Start with `docker compose up -d`, stop with `docker compose down`.
+# Ports are bound to 127.0.0.1, so nothing here is reachable from other machines on the network.
+services:
+  # Catches every email the app sends and shows it in a web inbox at http://localhost:8025.
+  # Run the app with: SMTP_HOST=localhost SMTP_PORT=1025 SMTP_FROM="Todo <no-reply@localhost>" SMTP_REQUIRE_TLS=false
+  mailpit:
+    image: axllent/mailpit:v1.21.0
+    ports:
+      - 127.0.0.1:1025:1025 # SMTP
+      - 127.0.0.1:8025:8025 # web inbox
+
+  # Not used by the app yet: it stores data in SQLite. Here for the planned move to Postgres.
+  postgres:
+    image: postgres:17.2-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-todo}
+      # A local-only default; override in .env (git-ignored), and never reuse it anywhere real
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-todo}
+      POSTGRES_DB: ${POSTGRES_DB:-todo_list}
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
