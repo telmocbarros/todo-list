@@ -48,6 +48,21 @@ export class AccountEmails {
     });
   }
 
+  passwordReset(to: string, token: string): Promise<void> {
+    return this.sender.send({
+      to,
+      subject: 'Reset your password',
+      text: [
+        'Someone asked to reset the password for your account. To choose a new one, open:',
+        '',
+        this.link('/reset-password', token),
+        '',
+        'The link works once and expires in 1 hour. Resetting signs you out everywhere.',
+        'If you did not ask for this, ignore this email: your password has not changed.',
+      ].join('\n'),
+    });
+  }
+
   private link(path: string, token: string): string {
     return `${this.appUrl}${path}?token=${token}`;
   }

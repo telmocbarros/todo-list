@@ -11,6 +11,7 @@ export const RATE_LIMITS = {
   login: { max: 10, windowMs: 15 * MINUTE_MS },
   signup: { max: 5, windowMs: 60 * MINUTE_MS },
   resendVerification: { max: 3, windowMs: 60 * MINUTE_MS },
+  forgotPassword: { max: 3, windowMs: 60 * MINUTE_MS },
 } as const;
 
 export type TRateLimitedRoute = keyof typeof RATE_LIMITS;

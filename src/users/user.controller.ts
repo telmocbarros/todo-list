@@ -1,14 +1,12 @@
 import type { FastifyInstance, onRequestAsyncHookHandler } from 'fastify';
 import { currentUser } from '../auth/auth.controller.js';
-import { LIMITS, SINGLE_LINE_TEXT, TOKEN, USERNAME } from '../input.js';
+import { CHECK_EMAIL, emailTokenSchema, newPasswordSchema } from '../http.js';
+import { LIMITS, SINGLE_LINE_TEXT, USERNAME } from '../input.js';
 import type { TRateLimitRouteOptions } from '../rate-limit/rate-limit.js';
 import type { ResendVerificationDTO, SignupDTO, VerifyEmailDTO } from './user.dto.js';
 import type { UserService } from './user.service.js';
 
 const personName = { type: 'string', maxLength: LIMITS.personNameLength, pattern: SINGLE_LINE_TEXT } as const;
-
-/** The one answer to signup and resend, whatever happened: the outcome is told to the inbox. */
-const CHECK_EMAIL = { message: 'Check your email to continue' };
 
 export interface IUserRateLimits {
   signup: TRateLimitRouteOptions;
@@ -38,11 +36,7 @@ export const registerUserRoutes = (
             },
             firstName: personName,
             lastName: personName,
-            password: {
-              type: 'string',
-              minLength: LIMITS.passwordMinLength,
-              maxLength: LIMITS.passwordMaxLength,
-            },
+            password: newPasswordSchema,
           },
           required: ['email', 'username', 'firstName', 'lastName', 'password'],
           additionalProperties: false,
@@ -61,7 +55,7 @@ export const registerUserRoutes = (
       schema: {
         body: {
           type: 'object',
-          properties: { token: { type: 'string', maxLength: LIMITS.tokenLength, pattern: TOKEN } },
+          properties: { token: emailTokenSchema },
           required: ['token'],
           additionalProperties: false,
         },

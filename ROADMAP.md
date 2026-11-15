@@ -87,9 +87,10 @@ Sending email, and the two flows that depend on it. It also closes the account-e
 
 - [x] Signup always responds the same way (202), whether or not the email already has an account. The real outcome goes to the inbox: a verification link for a new address, a "someone tried to sign up with your email" notice for an existing one, a "choose another username" notice for a taken username.
 - [x] `POST /auth/verify-email` with a token, and `POST /auth/resend-verification`, limited to 3 per hour per IP.
-- [ ] `POST /auth/forgot-password` always answers 202 with the same body. `POST /auth/reset-password` takes a token and a new password.
-- [ ] A password reset invalidates every session of that user.
-- [ ] Tokens are single use. Verification links expire after 24 hours, reset links after 1 hour.
+- [x] `POST /auth/forgot-password` always answers 202 with the same body, limited to 3 per hour per IP. `POST /auth/reset-password` takes a token and a new password.
+- [x] A password reset invalidates every session of that user, and marks an unverified email verified (the link proves the address).
+- [x] Tokens are single use. Verification links expire after 24 hours, reset links after 1 hour.
+- [ ] Limit emails per address as well as per IP, so someone with many IPs cannot flood one inbox with reset or verification emails.
 
 **Decision** — an unverified user cannot log in. With the right password, login answers 403 "Email not verified", so a real user knows what to do; with a wrong one it gives the usual generic 401, so the 403 reveals nothing to someone without the password.
 

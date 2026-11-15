@@ -96,6 +96,15 @@ describe.each(RATE_LIMITERS)('rate limiting (%s limiter)', (rateLimiter) => {
     });
   });
 
+  describe('forgot password: 3 attempts per hour per IP', () => {
+    it('allows 3 requests and rejects the 4th', async () => {
+      const forgot = () =>
+        app.inject({ method: 'POST', url: '/auth/forgot-password', payload: { email: account.email } });
+      for (let i = 0; i < 3; i++) expect((await forgot()).statusCode).toBe(202);
+      expectTooMany(await forgot(), 60 * 60);
+    });
+  });
+
   it('leaves other routes unlimited', async () => {
     for (let i = 0; i < 30; i++) {
       expect((await app.inject({ method: 'GET', url: '/priorities' })).statusCode).toBe(200);

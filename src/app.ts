@@ -5,6 +5,8 @@ import { AuthService } from './auth/auth.service.js';
 import type { IEmailTokenRepository } from './auth/email-token.repository.js';
 import { EmailTokenService } from './auth/email-token.service.js';
 import { PasswordHasher } from './auth/password-hasher.js';
+import { registerPasswordResetRoutes } from './auth/password-reset.controller.js';
+import { PasswordResetService } from './auth/password-reset.service.js';
 import type { ISessionRepository } from './auth/session.repository.js';
 import type { TRateLimiterKind } from './config.js';
 import { createCrossSiteWriteGuard } from './csrf.js';
@@ -98,7 +100,9 @@ export const buildApp = (
     sendInBackground(emailSender, (err, { to, subject }) => app.log.error({ err, to, subject }, 'Email failed')),
     appUrl,
   );
-  const users = new UserService(userRepository, hasher, new EmailTokenService(emailTokenRepository), emails);
+  const tokens = new EmailTokenService(emailTokenRepository);
+  const users = new UserService(userRepository, hasher, tokens, emails);
+  const resets = new PasswordResetService(userRepository, sessionRepository, hasher, tokens, emails);
 
   // Routes go in a plugin, so they load after the plugins above; the rate-limit plugin
   // can only attach to routes added once it has loaded
@@ -107,6 +111,7 @@ export const buildApp = (
     api.get('/health', async () => ({ status: 'ok' }));
     registerAuthRoutes(api, auth, rateLimits.login);
     registerUserRoutes(api, users, requireUser, rateLimits);
+    registerPasswordResetRoutes(api, resets, rateLimits.forgotPassword);
     registerTodoRoutes(api, new TodoService(todoRepository, labelRepository), requireUser);
     registerLabelRoutes(api, new LabelService(labelRepository, todoRepository), requireUser);
   });
