@@ -14,8 +14,8 @@ describe('ownership: users only ever see and change their own data', () => {
     const { close, ...repositories } = await createTestRepositories();
     closeDatabase = close;
     app = buildApp(repositories);
-    ada = as(app, await signUpAndLogIn(app, 'ada'));
-    bob = as(app, await signUpAndLogIn(app, 'bob'));
+    ada = as(app, await signUpAndLogIn(app, repositories.emailSender, 'ada'));
+    bob = as(app, await signUpAndLogIn(app, repositories.emailSender, 'bob'));
   });
 
   afterEach(async () => {

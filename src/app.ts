@@ -2,10 +2,14 @@ import cookie from '@fastify/cookie';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { createRequireUser, registerAuthRoutes } from './auth/auth.controller.js';
 import { AuthService } from './auth/auth.service.js';
+import type { IEmailTokenRepository } from './auth/email-token.repository.js';
+import { EmailTokenService } from './auth/email-token.service.js';
 import { PasswordHasher } from './auth/password-hasher.js';
 import type { ISessionRepository } from './auth/session.repository.js';
 import type { TRateLimiterKind } from './config.js';
 import { createCrossSiteWriteGuard } from './csrf.js';
+import { AccountEmails } from './email/account-emails.js';
+import { type IEmailSender, sendInBackground } from './email/email-sender.js';
 import {
   ConflictError,
   ForbiddenError,
@@ -40,6 +44,8 @@ export interface IAppDependencies {
   labelRepository: ILabelRepository;
   userRepository: IUserRepository;
   sessionRepository: ISessionRepository;
+  emailTokenRepository: IEmailTokenRepository;
+  emailSender: IEmailSender;
 }
 
 export interface IAppOptions {
@@ -51,11 +57,26 @@ export interface IAppOptions {
   allowedOrigins?: string[];
   /** Which rate limiter guards login and signup: the plugin (default) or our own. */
   rateLimiter?: TRateLimiterKind;
+  /** Where the web UI lives, for the links in emails. */
+  appUrl?: string;
 }
 
 export const buildApp = (
-  { todoRepository, labelRepository, userRepository, sessionRepository }: IAppDependencies,
-  { https, trustProxy = false, allowedOrigins = [], rateLimiter = 'plugin' }: IAppOptions = {},
+  {
+    todoRepository,
+    labelRepository,
+    userRepository,
+    sessionRepository,
+    emailTokenRepository,
+    emailSender,
+  }: IAppDependencies,
+  {
+    https,
+    trustProxy = false,
+    allowedOrigins = [],
+    rateLimiter = 'plugin',
+    appUrl = 'http://localhost:3000',
+  }: IAppOptions = {},
 ): FastifyInstance => {
   const app = Fastify({ logger: true, trustProxy, bodyLimit: LIMITS.bodyBytes, ...(https && { https }) });
 
@@ -73,6 +94,11 @@ export const buildApp = (
   const hasher = new PasswordHasher();
   const auth = new AuthService(userRepository, sessionRepository, hasher);
   const requireUser = createRequireUser(auth);
+  const emails = new AccountEmails(
+    sendInBackground(emailSender, (err, { to, subject }) => app.log.error({ err, to, subject }, 'Email failed')),
+    appUrl,
+  );
+  const users = new UserService(userRepository, hasher, new EmailTokenService(emailTokenRepository), emails);
 
   // Routes go in a plugin, so they load after the plugins above; the rate-limit plugin
   // can only attach to routes added once it has loaded
@@ -80,7 +106,7 @@ export const buildApp = (
     // Liveness probe for load balancers and orchestrators: public, no database access
     api.get('/health', async () => ({ status: 'ok' }));
     registerAuthRoutes(api, auth, rateLimits.login);
-    registerUserRoutes(api, new UserService(userRepository, hasher), requireUser, rateLimits.signup);
+    registerUserRoutes(api, users, requireUser, rateLimits);
     registerTodoRoutes(api, new TodoService(todoRepository, labelRepository), requireUser);
     registerLabelRoutes(api, new LabelService(labelRepository, todoRepository), requireUser);
   });

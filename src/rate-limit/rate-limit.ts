@@ -10,6 +10,7 @@ const MINUTE_MS = 60 * 1000;
 export const RATE_LIMITS = {
   login: { max: 10, windowMs: 15 * MINUTE_MS },
   signup: { max: 5, windowMs: 60 * MINUTE_MS },
+  resendVerification: { max: 3, windowMs: 60 * MINUTE_MS },
 } as const;
 
 export type TRateLimitedRoute = keyof typeof RATE_LIMITS;
@@ -43,10 +44,9 @@ export const setUpRateLimits = (app: FastifyInstance, kind: TRateLimiterKind): T
     });
   }
 
-  const limiters = {
-    login: new SlidingWindowRateLimiter(RATE_LIMITS.login),
-    signup: new SlidingWindowRateLimiter(RATE_LIMITS.signup),
-  } satisfies Record<TRateLimitedRoute, SlidingWindowRateLimiter>;
+  const limiters = Object.fromEntries(
+    Object.entries(RATE_LIMITS).map(([route, limit]) => [route, new SlidingWindowRateLimiter(limit)]),
+  ) as Record<TRateLimitedRoute, SlidingWindowRateLimiter>;
 
   // Forget clients that have gone quiet, so memory does not grow with every IP ever seen
   const sweeper = setInterval(() => Object.values(limiters).forEach((limiter) => limiter.sweep()), MINUTE_MS);

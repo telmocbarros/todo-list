@@ -13,7 +13,7 @@ describe('input validation limits', () => {
     const { close, ...repositories } = await createTestRepositories();
     closeDatabase = close;
     app = buildApp(repositories);
-    api = as(app, await signUpAndLogIn(app));
+    api = as(app, await signUpAndLogIn(app, repositories.emailSender));
   });
 
   afterEach(async () => {

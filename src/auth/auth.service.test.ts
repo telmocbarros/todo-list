@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { UnauthorizedError } from '../errors.js';
+import { ForbiddenError, UnauthorizedError } from '../errors.js';
 import { createTestRepositories } from '../test/repositories.js';
-import { UserService } from '../users/user.service.js';
+import type { IUserRepository } from '../users/user.repository.js';
 import { AuthService } from './auth.service.js';
 import { type IPasswordHasher, PasswordHasher } from './password-hasher.js';
 import type { ISessionRepository } from './session.repository.js';
@@ -28,6 +28,7 @@ describe('AuthService', () => {
   let now: Date;
   let hasher: CountingHasher;
   let sessions: ISessionRepository;
+  let users: IUserRepository;
   let auth: AuthService;
   let closeDatabase: () => void;
 
@@ -37,15 +38,19 @@ describe('AuthService', () => {
     sessions = sessionRepository;
     hasher = new CountingHasher();
     now = new Date('2030-01-01T00:00:00.000Z');
+    users = userRepository;
     auth = new AuthService(userRepository, sessionRepository, hasher, { now: () => now });
-    await new UserService(userRepository, hasher).signup({
+    await users.save({
+      id: 'ada-id',
       email: 'ada@example.com',
       username: 'ada',
       firstName: 'Ada',
       lastName: 'Lovelace',
-      password,
+      passwordHash: await hasher.hash(password),
+      emailVerifiedAt: '2029-12-31T00:00:00.000Z',
+      createdAt: '2029-12-31T00:00:00.000Z',
+      updatedAt: '2029-12-31T00:00:00.000Z',
     });
-    hasher.verifyCalls = 0;
   });
 
   afterEach(() => closeDatabase());
@@ -83,6 +88,25 @@ describe('AuthService', () => {
       expect(unknown).toBeInstanceOf(UnauthorizedError);
       expect((wrong as Error).message).toBe('Invalid email or password');
       expect((unknown as Error).message).toBe((wrong as Error).message);
+    });
+
+    describe('with an unverified email', () => {
+      beforeEach(async () => {
+        const ada = (await users.findByEmail('ada@example.com'))!;
+        await users.save({ ...ada, emailVerifiedAt: null });
+      });
+
+      it('says the email is not verified, but only to someone who knows the password', async () => {
+        const error = await auth.login({ email: 'ada@example.com', password }).catch((e: Error) => e);
+        expect(error).toBeInstanceOf(ForbiddenError);
+        expect((error as Error).message).toBe('Email not verified: follow the link we sent you, or ask for a new one');
+      });
+
+      it('gives a wrong password the usual generic error, so nothing is revealed', async () => {
+        const error = await auth.login({ email: 'ada@example.com', password: 'nope' }).catch((e: Error) => e);
+        expect(error).toBeInstanceOf(UnauthorizedError);
+        expect((error as Error).message).toBe('Invalid email or password');
+      });
     });
 
     it('still checks a password when the email is unknown, so both failures take the same time', async () => {

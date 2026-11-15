@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { UnauthorizedError } from '../errors.js';
+import { ForbiddenError, UnauthorizedError } from '../errors.js';
 import { cleanText } from '../input.js';
 import { type TPublicUser, toPublicUser } from '../users/user.model.js';
 import type { IUserRepository } from '../users/user.repository.js';
@@ -18,6 +18,7 @@ const ABSOLUTE_TIMEOUT_MS = 30 * DAY_MS;
 const REFRESH_INTERVAL_MS = HOUR_MS;
 
 const INVALID_CREDENTIALS = 'Invalid email or password';
+const EMAIL_NOT_VERIFIED = 'Email not verified: follow the link we sent you, or ask for a new one';
 
 /** Sessions are stored by a hash of their token, so a leaked database cannot be used to sign in. */
 const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
@@ -53,6 +54,8 @@ export class AuthService {
     const passwordHash = user?.passwordHash ?? (await this.dummyHash);
     const valid = await this.hasher.verify(passwordHash, password);
     if (!user || !valid) throw new UnauthorizedError(INVALID_CREDENTIALS);
+    // Only checked after the password, so it is only ever told to someone who already knows it
+    if (!user.emailVerifiedAt) throw new ForbiddenError(EMAIL_NOT_VERIFIED);
 
     const token = randomBytes(32).toString('base64url');
     const createdAt = this.now().getTime();

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
 import { RATE_LIMITERS } from './config.js';
+import type { TestMailbox } from './test/mailbox.js';
 import { createTestRepositories } from './test/repositories.js';
 
 const account = {
@@ -15,11 +16,13 @@ const account = {
 // The same behaviour is required of both implementations
 describe.each(RATE_LIMITERS)('rate limiting (%s limiter)', (rateLimiter) => {
   let app: FastifyInstance;
+  let mailbox: TestMailbox;
   let closeDatabase: () => void;
 
   beforeEach(async () => {
     const { close, ...repositories } = await createTestRepositories();
     closeDatabase = close;
+    mailbox = repositories.emailSender;
     app = buildApp(repositories, { rateLimiter });
   });
 
@@ -42,6 +45,8 @@ describe.each(RATE_LIMITERS)('rate limiting (%s limiter)', (rateLimiter) => {
   describe('login: 10 attempts per 15 minutes per IP', () => {
     beforeEach(async () => {
       await app.inject({ method: 'POST', url: '/auth/signup', payload: account });
+      const token = mailbox.lastToken(account.email);
+      await app.inject({ method: 'POST', url: '/auth/verify-email', payload: { token } });
     });
 
     it('allows 10 attempts and rejects the 11th with 429 and Retry-After', async () => {
@@ -70,7 +75,7 @@ describe.each(RATE_LIMITERS)('rate limiting (%s limiter)', (rateLimiter) => {
           url: '/auth/signup',
           payload: { ...account, email: `u${i}@example.com`, username: `user${i}` },
         });
-        expect(res.statusCode).toBe(201);
+        expect(res.statusCode).toBe(202);
       }
       const sixth = await app.inject({
         method: 'POST',
@@ -78,6 +83,16 @@ describe.each(RATE_LIMITERS)('rate limiting (%s limiter)', (rateLimiter) => {
         payload: { ...account, email: 'u5@example.com', username: 'user5' },
       });
       expectTooMany(sixth, 60 * 60);
+    });
+  });
+
+  // It sends email, so without a limit it could flood someone's inbox
+  describe('resend verification: 3 attempts per hour per IP', () => {
+    it('allows 3 requests and rejects the 4th', async () => {
+      const resend = () =>
+        app.inject({ method: 'POST', url: '/auth/resend-verification', payload: { email: account.email } });
+      for (let i = 0; i < 3; i++) expect((await resend()).statusCode).toBe(202);
+      expectTooMany(await resend(), 60 * 60);
     });
   });
 

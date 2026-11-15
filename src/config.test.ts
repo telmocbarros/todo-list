@@ -10,7 +10,15 @@ describe('loadConfig', () => {
       trustProxy: false,
       allowedOrigins: [],
       rateLimiter: 'plugin',
+      appUrl: 'http://localhost:3000',
     });
+  });
+
+  it('reads APP_URL for the links in emails, without a trailing slash, and rejects a non-URL', () => {
+    expect(loadConfig({ APP_URL: 'https://todo.example.com/' }).appUrl).toBe('https://todo.example.com');
+    expect(loadConfig({ APP_URL: 'https://example.com/todo/' }).appUrl).toBe('https://example.com/todo');
+    expect(() => loadConfig({ APP_URL: 'todo.example.com' })).toThrow(/APP_URL/);
+    expect(() => loadConfig({ APP_URL: 'javascript:alert(1)' })).toThrow(/APP_URL/);
   });
 
   it('reads ALLOWED_ORIGINS as a comma-separated list of origins, normalized', () => {

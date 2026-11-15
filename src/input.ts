@@ -13,6 +13,8 @@ export const LIMITS = {
   passwordMinLength: 12,
   // An upper bound stops a huge password from making argon2 burn memory and CPU
   passwordMaxLength: 128,
+  // Emailed tokens are 43 characters (32 bytes, base64url); the margin leaves room to lengthen them
+  tokenLength: 64,
 } as const;
 
 // JSON Schema `pattern`s, matched as Unicode regular expressions.
@@ -22,6 +24,8 @@ export const SINGLE_LINE_TEXT = '^(?=.*\\S)[^\\p{Cc}]+$';
 export const MULTI_LINE_TEXT = '^[\\n\\r\\t\\P{Cc}]*$';
 /** Letters in any script (with their accents), digits, dot, dash and underscore. No spaces. */
 export const USERNAME = '^[\\p{L}\\p{M}\\p{N}._-]+$';
+/** A token from an emailed link: base64url characters only. */
+export const TOKEN = '^[A-Za-z0-9_-]+$';
 
 /**
  * Canonical Unicode form (NFC), so "é" typed as one character or as "e" plus an accent is the same text.

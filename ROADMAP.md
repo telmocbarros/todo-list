@@ -60,7 +60,7 @@ Accounts, so there is someone to own data.
 - [x] Rate limits per IP: login 10 per 15 minutes, signup 5 per hour. 429 with `Retry-After`, checked before the body is parsed or a password is hashed.
 - [x] Our own sliding-window limiter next to `@fastify/rate-limit`, chosen by `RATE_LIMITER` (`plugin` by default). Brought forward from phase 7 because login needed a limit; the same tests run against both.
 - [x] Login does the same work whether or not the account exists: when no user is found it still verifies the password against a fixed dummy hash, and every failure returns one generic "invalid email or password". Without this, an unknown email answers in about 1 ms and a wrong password in about 15 ms, which tells an attacker which emails are registered.
-- [ ] Known gap until phase 2: a duplicate signup returns before hashing the password, so it is faster than a real signup. Phase 2 closes it by making signup answer identically.
+- [x] Known gap until phase 2: a duplicate signup returns before hashing the password, so it is faster than a real signup. Phase 2 closed it: signup always hashes and answers identically.
 
 **Tests** — API tests act as a signed-in user through `signUpAndLogIn` and `as` in `src/test/auth.ts`; repository and service tests create users directly with `createTestUser` in `src/test/users.ts`.
 
@@ -80,17 +80,18 @@ Sending email, and the two flows that depend on it. It also closes the account-e
 
 - [ ] `IEmailSender` interface (recipient, subject, text body), with the implementation in the same file. A console implementation is the default for development and tests, so nothing is sent by accident. An SMTP implementation uses `nodemailer`, configured through `SMTP_*` environment variables in `src/config.ts`.
 - [ ] The provider is a free tier (Resend or Brevo, both speak SMTP), so switching provider is configuration. Locally, Mailpit catches mail. Production sending needs a domain with SPF, DKIM and DMARC records; use port 587 or 465, since port 25 is blocked by most hosts.
-- [ ] Tests assert on what would have been sent, with no network.
+- [x] Tests assert on what would have been sent, with no network (`TestMailbox` in `src/test/mailbox.ts`).
+- [x] Emails are handed over without waiting for delivery (`sendInBackground`), so response times do not reveal whether an email went out.
 
 **Endpoints**
 
-- [ ] Signup always responds the same way, whether or not the email already has an account. The real outcome goes to the inbox: a verification link for a new address, a "someone tried to sign up with your email" notice for an existing one.
-- [ ] `POST /auth/verify-email` with a token, and a rate-limited resend.
+- [x] Signup always responds the same way (202), whether or not the email already has an account. The real outcome goes to the inbox: a verification link for a new address, a "someone tried to sign up with your email" notice for an existing one, a "choose another username" notice for a taken username.
+- [x] `POST /auth/verify-email` with a token, and `POST /auth/resend-verification`, limited to 3 per hour per IP.
 - [ ] `POST /auth/forgot-password` always answers 202 with the same body. `POST /auth/reset-password` takes a token and a new password.
 - [ ] A password reset invalidates every session of that user.
 - [ ] Tokens are single use. Verification links expire after 24 hours, reset links after 1 hour.
 
-**Open decision** — whether an unverified user may log in at all, or only after verifying. Stricter is safer; looser is friendlier.
+**Decision** — an unverified user cannot log in. With the right password, login answers 403 "Email not verified", so a real user knows what to do; with a wrong one it gives the usual generic 401, so the 403 reveals nothing to someone without the password.
 
 **Risk** — these endpoints send mail, so they are an abuse target. They need rate limiting before they ship: add them to `RATE_LIMITS` in `src/rate-limit/rate-limit.ts`, which both limiters already read.
 

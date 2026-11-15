@@ -17,7 +17,23 @@ export interface IAppConfig {
   allowedOrigins: string[];
   /** `plugin` uses @fastify/rate-limit; `custom` uses our own sliding-window limiter. */
   rateLimiter: TRateLimiterKind;
+  /** Where the web UI lives, for the links in emails. No trailing slash. */
+  appUrl: string;
 }
+
+/** An http(s) URL without a trailing slash, so paths can be appended to it. */
+const parseAppUrl = (value: string): string => {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`APP_URL must be a URL such as https://todo.example.com, got "${value}"`);
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error(`APP_URL must be an http or https URL, got "${value}"`);
+  }
+  return url.href.replace(/\/+$/, '');
+};
 
 /** A bare origin (scheme, host, optional port), normalized; anything with a path is rejected. */
 const parseOrigin = (value: string): string => {
@@ -60,5 +76,6 @@ export const loadConfig = (env: NodeJS.ProcessEnv): IAppConfig => {
       .filter(Boolean)
       .map(parseOrigin),
     rateLimiter: rateLimiter as TRateLimiterKind,
+    appUrl: parseAppUrl(env.APP_URL ?? 'http://localhost:3000'),
   };
 };

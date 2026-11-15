@@ -1,22 +1,30 @@
 import type { FastifyInstance, onRequestAsyncHookHandler } from 'fastify';
 import { currentUser } from '../auth/auth.controller.js';
-import { LIMITS, SINGLE_LINE_TEXT, USERNAME } from '../input.js';
+import { LIMITS, SINGLE_LINE_TEXT, TOKEN, USERNAME } from '../input.js';
 import type { TRateLimitRouteOptions } from '../rate-limit/rate-limit.js';
-import type { SignupDTO } from './user.dto.js';
+import type { ResendVerificationDTO, SignupDTO, VerifyEmailDTO } from './user.dto.js';
 import type { UserService } from './user.service.js';
 
 const personName = { type: 'string', maxLength: LIMITS.personNameLength, pattern: SINGLE_LINE_TEXT } as const;
+
+/** The one answer to signup and resend, whatever happened: the outcome is told to the inbox. */
+const CHECK_EMAIL = { message: 'Check your email to continue' };
+
+export interface IUserRateLimits {
+  signup: TRateLimitRouteOptions;
+  resendVerification: TRateLimitRouteOptions;
+}
 
 export const registerUserRoutes = (
   app: FastifyInstance,
   service: UserService,
   requireUser: onRequestAsyncHookHandler,
-  signupRateLimit: TRateLimitRouteOptions,
+  rateLimits: IUserRateLimits,
 ): void => {
   app.post<{ Body: SignupDTO }>(
     '/auth/signup',
     {
-      ...signupRateLimit,
+      ...rateLimits.signup,
       schema: {
         body: {
           type: 'object',
@@ -41,7 +49,47 @@ export const registerUserRoutes = (
         },
       },
     },
-    async (req, reply) => reply.code(201).send(await service.signup(req.body)),
+    async (req, reply) => {
+      await service.signup(req.body);
+      return reply.code(202).send(CHECK_EMAIL);
+    },
+  );
+
+  app.post<{ Body: VerifyEmailDTO }>(
+    '/auth/verify-email',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          properties: { token: { type: 'string', maxLength: LIMITS.tokenLength, pattern: TOKEN } },
+          required: ['token'],
+          additionalProperties: false,
+        },
+      },
+    },
+    async (req, reply) => {
+      await service.verifyEmail(req.body.token);
+      return reply.code(204).send();
+    },
+  );
+
+  app.post<{ Body: ResendVerificationDTO }>(
+    '/auth/resend-verification',
+    {
+      ...rateLimits.resendVerification,
+      schema: {
+        body: {
+          type: 'object',
+          properties: { email: { type: 'string', maxLength: LIMITS.emailLength } },
+          required: ['email'],
+          additionalProperties: false,
+        },
+      },
+    },
+    async (req, reply) => {
+      await service.resendVerification(req.body.email);
+      return reply.code(202).send(CHECK_EMAIL);
+    },
   );
 
   app.get('/me', { onRequest: requireUser }, async (req) => service.get(currentUser(req).id));
