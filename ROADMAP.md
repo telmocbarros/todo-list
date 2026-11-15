@@ -182,7 +182,8 @@ Not features, but the difference between code that works and an app that can be 
 
 - [ ] Linter and formatter (the project has neither), with an `npm run lint` script.
 - [ ] CI running typecheck, lint and tests on push and pull requests.
-- [ ] `GET /health` for liveness, plus a readiness check that pings the database.
+- [x] `GET /health` for liveness.
+- [ ] A readiness check that pings the database.
 - [ ] Security headers and CORS with an explicit origin allowlist for the future UI.
 - [x] Our own rate limiter next to the plugin, chosen by a config flag: done in phase 1, as a sliding window log. In-memory state is fine because the app runs as a single instance anyway, which SQLite's single writer already requires.
 - [ ] A global rate limit across all routes, beyond the login and signup limits.
