@@ -23,7 +23,7 @@ Configuration comes from environment variables, parsed and validated in `src/con
 
 ## Architecture
 
-A Fastify REST API for todos (`/todos`), user-defined labels (`/labels`) and accounts (`/auth/*`, `/me`), plus a read-only `/priorities`. Each resource is layered as controller → service → repository.
+A Fastify REST API for todos (`/todos`), user-defined labels (`/labels`) and accounts (`/auth/*`, `/me`), plus a read-only `/priorities` and a public liveness probe `GET /health` (declared in `app.ts`; it does not touch the database). Each resource is layered as controller → service → repository.
 
 - `src/todos/todo.controller.ts` — HTTP layer: `registerTodoRoutes(app, service)` declares routes and JSON-schema validation, and calls the service. No business logic. Updates use `PATCH` (partial), not `PUT`.
 - `src/todos/todo.service.ts` — business logic (id/timestamp generation, not-found handling). Depends on the `ITodoRepository` interface, and throws `NotFoundError` (`src/errors.ts`) rather than touching HTTP.

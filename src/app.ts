@@ -77,6 +77,8 @@ export const buildApp = (
   // Routes go in a plugin, so they load after the plugins above; the rate-limit plugin
   // can only attach to routes added once it has loaded
   app.register(async (api) => {
+    // Liveness probe for load balancers and orchestrators: public, no database access
+    api.get('/health', async () => ({ status: 'ok' }));
     registerAuthRoutes(api, auth, rateLimits.login);
     registerUserRoutes(api, new UserService(userRepository, hasher), requireUser, rateLimits.signup);
     registerTodoRoutes(api, new TodoService(todoRepository, labelRepository), requireUser);
