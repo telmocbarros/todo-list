@@ -19,7 +19,40 @@ export interface IAppConfig {
   rateLimiter: TRateLimiterKind;
   /** Where the web UI lives, for the links in emails. No trailing slash. */
   appUrl: string;
+  /** Set to send real email; when unset, emails are printed to the console. */
+  smtp: ISmtpConfig | undefined;
 }
+
+export interface ISmtpConfig {
+  host: string;
+  /** 465 uses TLS from the start; any other port (usually 587) upgrades with STARTTLS. */
+  port: number;
+  /** The sender, such as `Todo <no-reply@example.com>`; its domain needs SPF, DKIM and DMARC records. */
+  from: string;
+  auth: { user: string; pass: string } | undefined;
+  /** Refuse to send over an unencrypted connection. Only turn off for a local mail catcher such as Mailpit. */
+  requireTls: boolean;
+}
+
+const parseSmtp = (env: NodeJS.ProcessEnv): ISmtpConfig | undefined => {
+  const { SMTP_HOST: host, SMTP_FROM: from, SMTP_USER: user, SMTP_PASSWORD: pass } = env;
+  if (!host) return undefined;
+  if (!from) throw new Error('SMTP_FROM must be set when SMTP_HOST is, such as "Todo <no-reply@example.com>"');
+  if (Boolean(user) !== Boolean(pass)) throw new Error('SMTP_USER and SMTP_PASSWORD must be set together');
+
+  const port = Number(env.SMTP_PORT ?? 587);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`SMTP_PORT must be an integer between 1 and 65535, got "${env.SMTP_PORT}"`);
+  }
+
+  return {
+    host,
+    port,
+    from,
+    auth: user && pass ? { user, pass } : undefined,
+    requireTls: env.SMTP_REQUIRE_TLS !== 'false',
+  };
+};
 
 /** An http(s) URL without a trailing slash, so paths can be appended to it. */
 const parseAppUrl = (value: string): string => {
@@ -77,5 +110,6 @@ export const loadConfig = (env: NodeJS.ProcessEnv): IAppConfig => {
       .map(parseOrigin),
     rateLimiter: rateLimiter as TRateLimiterKind,
     appUrl: parseAppUrl(env.APP_URL ?? 'http://localhost:3000'),
+    smtp: parseSmtp(env),
   };
 };

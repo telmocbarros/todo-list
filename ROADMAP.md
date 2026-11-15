@@ -78,7 +78,7 @@ Sending email, and the two flows that depend on it. It also closes the account-e
 
 **Sending**
 
-- [ ] `IEmailSender` interface (recipient, subject, text body), with the implementation in the same file. A console implementation is the default for development and tests, so nothing is sent by accident. An SMTP implementation uses `nodemailer`, configured through `SMTP_*` environment variables in `src/config.ts`.
+- [x] `IEmailSender` interface (recipient, subject, text body), with the implementation in the same file. A console implementation is the default for development and tests, so nothing is sent by accident. An SMTP implementation uses `nodemailer`, configured through `SMTP_*` environment variables in `src/config.ts`.
 - [ ] The provider is a free tier (Resend or Brevo, both speak SMTP), so switching provider is configuration. Locally, Mailpit catches mail. Production sending needs a domain with SPF, DKIM and DMARC records; use port 587 or 465, since port 25 is blocked by most hosts.
 - [x] Tests assert on what would have been sent, with no network (`TestMailbox` in `src/test/mailbox.ts`).
 - [x] Emails are handed over without waiting for delivery (`sendInBackground`), so response times do not reveal whether an email went out.

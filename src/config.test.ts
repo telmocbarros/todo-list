@@ -11,6 +11,43 @@ describe('loadConfig', () => {
       allowedOrigins: [],
       rateLimiter: 'plugin',
       appUrl: 'http://localhost:3000',
+      smtp: undefined,
+    });
+  });
+
+  describe('SMTP', () => {
+    const smtp = { SMTP_HOST: 'smtp.example.com', SMTP_FROM: 'Todo <no-reply@example.com>' };
+
+    it('is off unless SMTP_HOST is set, so emails go to the console', () => {
+      expect(loadConfig({}).smtp).toBeUndefined();
+    });
+
+    it('defaults to port 587 with TLS required and no login', () => {
+      expect(loadConfig(smtp).smtp).toEqual({
+        host: 'smtp.example.com',
+        port: 587,
+        from: 'Todo <no-reply@example.com>',
+        auth: undefined,
+        requireTls: true,
+      });
+    });
+
+    it('reads the port, the login, and SMTP_REQUIRE_TLS=false for a local mail catcher', () => {
+      const config = loadConfig({
+        ...smtp,
+        SMTP_PORT: '465',
+        SMTP_USER: 'apikey',
+        SMTP_PASSWORD: 'secret',
+        SMTP_REQUIRE_TLS: 'false',
+      });
+      expect(config.smtp).toMatchObject({ port: 465, auth: { user: 'apikey', pass: 'secret' }, requireTls: false });
+    });
+
+    it('rejects a host without a sender address, a user without a password, and an invalid port', () => {
+      expect(() => loadConfig({ SMTP_HOST: 'smtp.example.com' })).toThrow(/SMTP_FROM/);
+      expect(() => loadConfig({ ...smtp, SMTP_USER: 'apikey' })).toThrow(/SMTP_USER and SMTP_PASSWORD/);
+      expect(() => loadConfig({ ...smtp, SMTP_PASSWORD: 'secret' })).toThrow(/SMTP_USER and SMTP_PASSWORD/);
+      expect(() => loadConfig({ ...smtp, SMTP_PORT: 'abc' })).toThrow(/SMTP_PORT/);
     });
   });
 
