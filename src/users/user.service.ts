@@ -29,6 +29,7 @@ export class UserService {
       firstName: cleanText(firstName),
       lastName: cleanText(lastName),
       passwordHash: await this.hasher.hash(password),
+      emailVerifiedAt: null,
       createdAt: now,
       updatedAt: now,
     });

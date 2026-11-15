@@ -29,6 +29,13 @@
       "when": 1793565711759,
       "tag": "0003_yielding_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794768276761,
+      "tag": "0004_strange_bromley",
+      "breakpoints": true
     }
   ]
 }

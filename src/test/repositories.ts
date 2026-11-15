@@ -1,3 +1,4 @@
+import { EmailTokenRepository } from '../auth/email-token.repository.js';
 import { SessionRepository } from '../auth/session.repository.js';
 import { createDatabase } from '../db/client.js';
 import { LabelRepository } from '../labels/label.repository.js';
@@ -12,6 +13,7 @@ export const createTestRepositories = async () => {
     labelRepository: new LabelRepository(db),
     userRepository: new UserRepository(db),
     sessionRepository: new SessionRepository(db),
+    emailTokenRepository: new EmailTokenRepository(db),
     close,
   };
 };

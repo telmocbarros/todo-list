@@ -5,6 +5,8 @@ export interface UserModel {
   firstName: string;
   lastName: string;
   passwordHash: string;
+  /** When the user followed the verification link; null until then, and they cannot log in. */
+  emailVerifiedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

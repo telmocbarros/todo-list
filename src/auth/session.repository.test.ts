@@ -30,6 +30,7 @@ describe('SessionRepository', () => {
         firstName: 'A',
         lastName: 'B',
         passwordHash: 'h',
+        emailVerifiedAt: null,
         createdAt: '2030-01-01T00:00:00.000Z',
         updatedAt: '2030-01-01T00:00:00.000Z',
       });

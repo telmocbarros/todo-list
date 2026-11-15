@@ -9,6 +9,7 @@ export const createTestUser = async (users: IUserRepository, id: string): Promis
     firstName: 'Test',
     lastName: 'User',
     passwordHash: 'not-a-real-hash',
+    emailVerifiedAt: '2030-01-01T00:00:00.000Z',
     createdAt: '2030-01-01T00:00:00.000Z',
     updatedAt: '2030-01-01T00:00:00.000Z',
   });

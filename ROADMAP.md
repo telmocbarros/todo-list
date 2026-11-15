@@ -72,8 +72,9 @@ Sending email, and the two flows that depend on it. It also closes the account-e
 
 **Schema**
 
-- [ ] `email_verified_at` on `users`, nullable.
-- [ ] `email_tokens`: `id`, `user_id` (cascade delete), `type` (`verify` or `reset`), `token_hash`, `expires_at`, `used_at`, `created_at`. Only a SHA-256 hash of the token is stored, so a leaked database does not leak working links. Tokens are 32 random bytes, URL-safe.
+- [x] `email_verified_at` on `users`, nullable.
+- [x] `email_tokens`: `id`, `user_id` (cascade delete), `type` (`verify` or `reset`), `token_hash`, `expires_at`, `used_at`, `created_at`. Only a SHA-256 hash of the token is stored, so a leaked database does not leak working links. Tokens are 32 random bytes, URL-safe.
+- [ ] Periodically delete used and expired tokens, so the table does not grow forever.
 
 **Sending**
 

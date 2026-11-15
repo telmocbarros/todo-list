@@ -11,6 +11,7 @@ const buildUser = (overrides: Partial<UserModel> = {}): UserModel => ({
   firstName: 'Ada',
   lastName: 'Lovelace',
   passwordHash: '$argon2id$stored',
+  emailVerifiedAt: null,
   createdAt: '2030-01-01T00:00:00.000Z',
   updatedAt: '2030-01-01T00:00:00.000Z',
   ...overrides,

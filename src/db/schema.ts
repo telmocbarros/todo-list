@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import type { TEmailTokenType } from '../auth/email-token.model.js';
 import type { TPriority } from '../todos/priority.js';
 
 export const users = sqliteTable(
@@ -11,6 +12,8 @@ export const users = sqliteTable(
     firstName: text('first_name').notNull(),
     lastName: text('last_name').notNull(),
     passwordHash: text('password_hash').notNull(),
+    // Null until the user follows the link in the verification email; they cannot log in before that
+    emailVerifiedAt: text('email_verified_at'),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
@@ -29,6 +32,24 @@ export const sessions = sqliteTable('sessions', {
   createdAt: text('created_at').notNull(),
   expiresAt: text('expires_at').notNull(),
 });
+
+/** Single-use links sent by email: verifying an address, or resetting a password. */
+export const emailTokens = sqliteTable(
+  'email_tokens',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').$type<TEmailTokenType>().notNull(),
+    // SHA-256 hash of the token in the link, never the token itself
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    usedAt: text('used_at'),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [uniqueIndex('email_tokens_hash_unique').on(table.tokenHash)],
+);
 
 export const labels = sqliteTable(
   'labels',
