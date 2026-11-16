@@ -1,11 +1,23 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, lt, or, sql } from 'drizzle-orm';
 import type { TDatabase } from '../db/client.js';
 import { todoLabels, todos } from '../db/schema.js';
 import type { TodoModel } from './todo.model.js';
 
+/** Where the previous history page ended: the last todo's `completedAt` and `id`. */
+export interface ITodoCursor {
+  completedAt: string;
+  id: string;
+}
+
+/**
+ * `active`: todos not completed, in creation order (unbounded, as a user keeps few open).
+ * `history`: todos with a `completedAt`, newest first, one page of `limit` after `after`.
+ */
+export type TTodoQuery = { status: 'active' } | { status: 'history'; limit: number; after?: ITodoCursor };
+
 /** Every method is scoped to one owner: a user can never see or change another user's todos. */
 export interface ITodoRepository {
-  findAll(userId: string): Promise<TodoModel[]>;
+  findMany(userId: string, query: TTodoQuery): Promise<TodoModel[]>;
   findById(userId: string, id: string): Promise<TodoModel | undefined>;
   save(userId: string, todo: TodoModel): Promise<TodoModel>;
   delete(userId: string, id: string): Promise<boolean>;
@@ -20,14 +32,44 @@ const toTodo = ({ userId: _userId, ...row }: TTodoRow, labelIds: string[]): Todo
 export class TodoRepository implements ITodoRepository {
   constructor(private readonly db: TDatabase) {}
 
-  async findAll(userId: string): Promise<TodoModel[]> {
-    const rows = await this.db.select().from(todos).where(eq(todos.userId, userId)).orderBy(sql`rowid`);
+  async findMany(userId: string, query: TTodoQuery): Promise<TodoModel[]> {
+    const rows = query.status === 'active' ? await this.findActive(userId) : await this.findHistory(userId, query);
+    return this.withLabels(rows);
+  }
+
+  private findActive(userId: string): Promise<TTodoRow[]> {
+    return this.db
+      .select()
+      .from(todos)
+      .where(and(eq(todos.userId, userId), eq(todos.completed, false)))
+      .orderBy(sql`rowid`);
+  }
+
+  private findHistory(userId: string, { limit, after }: { limit: number; after?: ITodoCursor }): Promise<TTodoRow[]> {
+    // Keyset pagination: rows strictly after the cursor in (completedAt desc, id desc) order,
+    // so pages stay correct while todos are completed or cleared in between
+    const afterCursor =
+      after &&
+      or(
+        lt(todos.completedAt, after.completedAt),
+        and(eq(todos.completedAt, after.completedAt), lt(todos.id, after.id)),
+      );
+    return this.db
+      .select()
+      .from(todos)
+      .where(and(eq(todos.userId, userId), isNotNull(todos.completedAt), afterCursor))
+      .orderBy(desc(todos.completedAt), desc(todos.id))
+      .limit(limit);
+  }
+
+  /** Loads the label ids of the given todos in one query, keeping each todo's label order. */
+  private async withLabels(rows: TTodoRow[]): Promise<TodoModel[]> {
+    if (rows.length === 0) return [];
     const links = await this.db
       .select({ todoId: todoLabels.todoId, labelId: todoLabels.labelId })
       .from(todoLabels)
-      .innerJoin(todos, eq(todoLabels.todoId, todos.id))
-      .where(eq(todos.userId, userId))
-      .orderBy(sql`${todoLabels}.rowid`);
+      .where(inArray(todoLabels.todoId, rows.map((row) => row.id)))
+      .orderBy(sql`rowid`);
 
     const labelIdsByTodo = new Map<string, string[]>();
     for (const { todoId, labelId } of links) {

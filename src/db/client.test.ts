@@ -89,7 +89,7 @@ describe('createDatabase', () => {
 
     await db.delete(users).where(eq(users.id, ada));
 
-    expect(await todos.findAll(ada)).toEqual([]);
+    expect(await todos.findMany(ada, { status: 'active' })).toEqual([]);
     expect(await labels.findAll(ada)).toEqual([]);
     expect(await sessions.findById('ada-session')).toBeUndefined();
     expect(await todos.findById(bob, 'bob-todo')).toMatchObject({ labelIds: ['bob-label'] });

@@ -1,0 +1,1 @@
+CREATE INDEX `todos_user_history_idx` ON `todos` (`user_id`,`completed_at`,`id`);

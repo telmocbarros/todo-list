@@ -1,10 +1,10 @@
 import type { FastifyInstance, onRequestAsyncHookHandler } from 'fastify';
 import { currentUser } from '../auth/auth.controller.js';
 import { idParams, type IIdParams } from '../http.js';
-import { LIMITS, MULTI_LINE_TEXT, SINGLE_LINE_TEXT } from '../input.js';
+import { LIMITS, MULTI_LINE_TEXT, SINGLE_LINE_TEXT, TOKEN } from '../input.js';
 import { PRIORITIES } from './priority.js';
 import type { CreateTodoDTO, UpdateTodoDTO } from './todo.dto.js';
-import type { TodoService } from './todo.service.js';
+import type { IHistoryQuery, TodoService } from './todo.service.js';
 
 const dueDate = { type: ['string', 'null'], format: 'date-time' } as const;
 
@@ -39,7 +39,26 @@ export const registerTodoRoutes = (
   // Every todo route needs a signed-in user, checked before the body is validated
   const signedIn = { onRequest: requireUser };
 
+  // The active list: completed todos move to the history
   app.get('/todos', signedIn, async (req) => service.list(currentUser(req).id));
+
+  app.get<{ Querystring: IHistoryQuery }>(
+    '/todos/history',
+    {
+      ...signedIn,
+      schema: {
+        querystring: {
+          type: 'object',
+          properties: {
+            limit: { type: 'integer', minimum: 1, maximum: LIMITS.pageSizeMax, default: LIMITS.pageSizeDefault },
+            cursor: { type: 'string', maxLength: LIMITS.cursorLength, pattern: TOKEN },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (req) => service.history(currentUser(req).id, req.query),
+  );
 
   app.get<{ Params: IIdParams }>('/todos/:id', { ...signedIn, schema: { params: idParams } }, async (req) =>
     service.get(currentUser(req).id, req.params.id),

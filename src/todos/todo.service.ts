@@ -5,7 +5,7 @@ import type { ILabelRepository } from '../labels/label.repository.js';
 import { DEFAULT_PRIORITY } from './priority.js';
 import type { CreateTodoDTO, UpdateTodoDTO } from './todo.dto.js';
 import type { TodoModel } from './todo.model.js';
-import type { ITodoRepository } from './todo.repository.js';
+import type { ITodoCursor, ITodoRepository } from './todo.repository.js';
 
 const normalizeDate = (date: string | null | undefined): string | null =>
   date ? new Date(date).toISOString() : null;
@@ -13,6 +13,34 @@ const normalizeDate = (date: string | null | undefined): string | null =>
 export interface ITodoServiceOptions {
   now?: () => Date;
 }
+
+export interface IHistoryQuery {
+  limit: number;
+  /** The `nextCursor` of the previous page; omitted for the first page. */
+  cursor?: string;
+}
+
+export interface ITodoPage {
+  items: TodoModel[];
+  /** Pass back as `cursor` for the next page; null on the last page. */
+  nextCursor: string | null;
+}
+
+// Cursors are opaque to clients: base64url JSON of the last item's [completedAt, id]
+const encodeCursor = (todo: TodoModel): string =>
+  Buffer.from(JSON.stringify([todo.completedAt, todo.id])).toString('base64url');
+
+const decodeCursor = (cursor: string): ITodoCursor => {
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+    if (Array.isArray(parsed) && parsed.length === 2 && parsed.every((part) => typeof part === 'string')) {
+      return { completedAt: parsed[0], id: parsed[1] };
+    }
+  } catch {
+    // Not base64url JSON: rejected below like any other malformed cursor
+  }
+  throw new ValidationError('Invalid cursor');
+};
 
 /**
  * Every method acts on behalf of one user, `userId`. Another user's todo is reported as not found,
@@ -52,8 +80,22 @@ export class TodoService {
     return unique;
   }
 
+  /** The active list: todos not completed, in creation order. */
   list(userId: string): Promise<TodoModel[]> {
-    return this.repository.findAll(userId);
+    return this.repository.findMany(userId, { status: 'active' });
+  }
+
+  /** One page of the history (todos ever completed and not cleared), newest first. */
+  async history(userId: string, { limit, cursor }: IHistoryQuery): Promise<ITodoPage> {
+    // One extra row tells whether another page follows, without a separate count
+    const rows = await this.repository.findMany(userId, {
+      status: 'history',
+      limit: limit + 1,
+      after: cursor === undefined ? undefined : decodeCursor(cursor),
+    });
+    const items = rows.slice(0, limit);
+    const last = items.at(-1);
+    return { items, nextCursor: rows.length > limit && last ? encodeCursor(last) : null };
   }
 
   async get(userId: string, id: string): Promise<TodoModel> {

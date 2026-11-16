@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import type { TEmailTokenType } from '../auth/email-token.model.js';
 import type { TPriority } from '../todos/priority.js';
 
@@ -65,21 +65,26 @@ export const labels = sqliteTable(
   (table) => [uniqueIndex('labels_user_name_unique').on(table.userId, sql`lower(${table.name})`)],
 );
 
-export const todos = sqliteTable('todos', {
-  id: text('id').primaryKey(),
-  userId: text('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  description: text('description').notNull(),
-  completed: integer('completed', { mode: 'boolean' }).notNull(),
-  // When the todo was last completed; kept on reopening, so it stays in the history until cleared
-  completedAt: text('completed_at'),
-  priority: text('priority').$type<TPriority>().notNull(),
-  dueDate: text('due_date'),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull(),
-});
+export const todos = sqliteTable(
+  'todos',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    completed: integer('completed', { mode: 'boolean' }).notNull(),
+    // When the todo was last completed; kept on reopening, so it stays in the history until cleared
+    completedAt: text('completed_at'),
+    priority: text('priority').$type<TPriority>().notNull(),
+    dueDate: text('due_date'),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  // Serves the history list: one user's todos by completedAt, then id, in the order pages are read
+  (table) => [index('todos_user_history_idx').on(table.userId, table.completedAt, table.id)],
+);
 
 export const todoLabels = sqliteTable(
   'todo_labels',

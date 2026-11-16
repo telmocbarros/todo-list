@@ -131,15 +131,15 @@ The two are deliberately not the same thing. Completing a todo sets `completed_a
 
 **Endpoints**
 
-- [ ] `GET /todos` returns only active todos (`completed = false`).
-- [ ] `GET /todos/history` returns everything with a `completed_at`, newest first.
+- [x] `GET /todos` returns only active todos (`completed = false`).
+- [x] `GET /todos/history` returns everything with a `completed_at`, newest first, as `{ items, nextCursor }`. `?limit=` (1–100, default 20) and `?cursor=` (the previous page's opaque `nextCursor`).
 - [x] Reopening (`PATCH { completed: false }`) returns a todo to the active list and leaves `completed_at` intact, so a reopened todo appears in both lists.
 - [x] Clearing the history mark is deliberate: `PATCH { completedAt: null }`, never a side effect of reopening. It is refused (400) while the todo is completed, so a completed todo always has a `completed_at`. Completing an already completed todo keeps the first stamp; completing a reopened one stamps it anew.
 
 **Work**
 
-- [ ] `ITodoRepository.findAll()` becomes `findMany(userId, { status, limit, cursor, sort })`.
-- [ ] Cursor pagination keyed on `(completed_at, id)`. History is the first list that grows without bound.
+- [x] `ITodoRepository.findAll()` becomes `findMany(userId, query)`, where `query` is `{ status: 'active' }` or `{ status: 'history', limit, after? }`. No `sort` option yet: each list has one fixed order, so it would be unused.
+- [x] Cursor pagination keyed on `(completed_at, id)`, served by the index `todos_user_history_idx` on `(user_id, completed_at, id)`. History is the first list that grows without bound. The active list stays unpaginated for now.
 
 ---
 

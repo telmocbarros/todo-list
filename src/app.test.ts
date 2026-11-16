@@ -74,6 +74,46 @@ describe('todo API', () => {
     });
   });
 
+  describe('active list and history', () => {
+    const complete = async (title: string) => {
+      const { id } = (await create({ title })).json();
+      await api({ method: 'PATCH', url: `/todos/${id}`, payload: { completed: true } });
+      return id as string;
+    };
+
+    it('GET /todos leaves completed todos out; GET /todos/history has them', async () => {
+      await create({ title: 'open' });
+      await complete('done');
+
+      expect((await api({ method: 'GET', url: '/todos' })).json().map((t: { title: string }) => t.title)).toEqual([
+        'open',
+      ]);
+      const history = await api({ method: 'GET', url: '/todos/history' });
+      expect(history.statusCode).toBe(200);
+      expect(history.json()).toMatchObject({ items: [{ title: 'done' }], nextCursor: null });
+    });
+
+    it('GET /todos/history pages with limit and cursor', async () => {
+      for (const title of ['a', 'b', 'c']) await complete(title);
+
+      const first = (await api({ method: 'GET', url: '/todos/history?limit=2' })).json();
+      expect(first.items).toHaveLength(2);
+      const second = await api({ method: 'GET', url: `/todos/history?limit=2&cursor=${first.nextCursor}` });
+      expect(second.json().items).toHaveLength(1);
+      expect(second.json().nextCursor).toBeNull();
+    });
+
+    it('GET /todos/history rejects a bad limit or cursor (400)', async () => {
+      for (const query of ['limit=0', 'limit=101', 'limit=x', 'cursor=nonsense', 'cursor=%24%24']) {
+        expect((await api({ method: 'GET', url: `/todos/history?${query}` })).statusCode, query).toBe(400);
+      }
+    });
+
+    it('GET /todos/history needs a session (401)', async () => {
+      expect((await app.inject({ method: 'GET', url: '/todos/history' })).statusCode).toBe(401);
+    });
+  });
+
   it('DELETE /todos/:id returns 204, then 404', async () => {
     const { id } = (await create({ title: 'a' })).json();
     expect((await api({ method: 'DELETE', url: `/todos/${id}` })).statusCode).toBe(204);

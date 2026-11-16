@@ -40,6 +40,8 @@ describe('ITodoRepository', () => {
 
   afterEach(() => closeDatabase());
 
+  const active = (userId: string) => todos.findMany(userId, { status: 'active' });
+
   it('saves and finds a todo by id, keeping every field', async () => {
     await addLabel('l1');
     const todo = buildTodo({
@@ -58,12 +60,52 @@ describe('ITodoRepository', () => {
     expect(await todos.findById(ada, 'nope')).toBeUndefined();
   });
 
-  it('lists todos in insertion order', async () => {
+  it('lists active todos in insertion order', async () => {
     const a = await todos.save(ada, buildTodo({ title: 'a' }));
     const b = await todos.save(ada, buildTodo({ title: 'b' }));
     const c = await todos.save(ada, buildTodo({ title: 'c' }));
     await todos.save(ada, { ...a, title: 'a2' });
-    expect((await todos.findAll(ada)).map((t) => t.id)).toEqual([a.id, b.id, c.id]);
+    expect((await active(ada)).map((t) => t.id)).toEqual([a.id, b.id, c.id]);
+  });
+
+  it('leaves completed todos out of the active list, but keeps reopened ones', async () => {
+    const open = await todos.save(ada, buildTodo());
+    await todos.save(ada, buildTodo({ completed: true, completedAt: '2030-01-01T01:00:00.000Z' }));
+    const reopened = await todos.save(ada, buildTodo({ completedAt: '2030-01-01T02:00:00.000Z' }));
+    expect((await active(ada)).map((t) => t.id)).toEqual([open.id, reopened.id]);
+  });
+
+  describe('history', () => {
+    const done = (id: string, completedAt: string, overrides: Partial<TodoModel> = {}) =>
+      todos.save(ada, buildTodo({ id, completed: true, completedAt, ...overrides }));
+
+    it('lists todos with a completedAt, newest first, including reopened ones', async () => {
+      await todos.save(ada, buildTodo({ id: 'open' }));
+      await done('old', '2030-01-01T01:00:00.000Z');
+      await done('reopened', '2030-01-01T03:00:00.000Z', { completed: false });
+      await done('new', '2030-01-01T02:00:00.000Z');
+      const ids = (await todos.findMany(ada, { status: 'history', limit: 10 })).map((t) => t.id);
+      expect(ids).toEqual(['reopened', 'new', 'old']);
+    });
+
+    it('pages with a cursor after the last item, breaking ties on completedAt by id', async () => {
+      await done('a', '2030-01-01T01:00:00.000Z');
+      await done('b', '2030-01-01T02:00:00.000Z');
+      await done('c', '2030-01-01T02:00:00.000Z');
+      await done('d', '2030-01-01T03:00:00.000Z');
+
+      const first = await todos.findMany(ada, { status: 'history', limit: 2 });
+      expect(first.map((t) => t.id)).toEqual(['d', 'c']);
+      const after = { completedAt: '2030-01-01T02:00:00.000Z', id: 'c' };
+      const second = await todos.findMany(ada, { status: 'history', limit: 2, after });
+      expect(second.map((t) => t.id)).toEqual(['b', 'a']);
+    });
+
+    it('returns labels for every listed todo', async () => {
+      await addLabel('l1');
+      await done('a', '2030-01-01T01:00:00.000Z', { labelIds: ['l1'] });
+      expect((await todos.findMany(ada, { status: 'history', limit: 10 }))[0]?.labelIds).toEqual(['l1']);
+    });
   });
 
   it('updates an existing todo when saved again, replacing its labels', async () => {
@@ -72,7 +114,7 @@ describe('ITodoRepository', () => {
     const todo = await todos.save(ada, buildTodo({ labelIds: ['l1'] }));
     await todos.save(ada, { ...todo, title: 'changed', labelIds: ['l2'] });
     expect(await todos.findById(ada, todo.id)).toMatchObject({ title: 'changed', labelIds: ['l2'] });
-    expect(await todos.findAll(ada)).toHaveLength(1);
+    expect(await active(ada)).toHaveLength(1);
   });
 
   it('keeps the order of label ids', async () => {
@@ -105,14 +147,16 @@ describe('ITodoRepository', () => {
   it('does not expose the owner in the returned todo', async () => {
     const todo = await todos.save(ada, buildTodo());
     expect(await todos.findById(ada, todo.id)).not.toHaveProperty('userId');
-    expect((await todos.findAll(ada))[0]).not.toHaveProperty('userId');
+    expect((await active(ada))[0]).not.toHaveProperty('userId');
   });
 
   describe('ownership', () => {
     it("lists and finds only the owner's todos", async () => {
       const mine = await todos.save(ada, buildTodo({ title: 'mine' }));
       await todos.save(bob, buildTodo({ title: 'theirs' }));
-      expect((await todos.findAll(ada)).map((t) => t.title)).toEqual(['mine']);
+      await todos.save(bob, buildTodo({ completed: true, completedAt: '2030-01-01T01:00:00.000Z' }));
+      expect((await active(ada)).map((t) => t.title)).toEqual(['mine']);
+      expect(await todos.findMany(ada, { status: 'history', limit: 10 })).toEqual([]);
       expect(await todos.findById(bob, mine.id)).toBeUndefined();
     });
 

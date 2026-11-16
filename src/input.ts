@@ -15,6 +15,10 @@ export const LIMITS = {
   passwordMaxLength: 128,
   // Emailed tokens are 43 characters (32 bytes, base64url); the margin leaves room to lengthen them
   tokenLength: 64,
+  // History cursors encode a timestamp and an id (up to `idLength`), base64url: about 130 characters at most
+  cursorLength: 200,
+  pageSizeDefault: 20,
+  pageSizeMax: 100,
 } as const;
 
 // JSON Schema `pattern`s, matched as Unicode regular expressions.
@@ -24,7 +28,7 @@ export const SINGLE_LINE_TEXT = '^(?=.*\\S)[^\\p{Cc}]+$';
 export const MULTI_LINE_TEXT = '^[\\n\\r\\t\\P{Cc}]*$';
 /** Letters in any script (with their accents), digits, dot, dash and underscore. No spaces. */
 export const USERNAME = '^[\\p{L}\\p{M}\\p{N}._-]+$';
-/** A token from an emailed link: base64url characters only. */
+/** A token from an emailed link, or a page cursor: base64url characters only. */
 export const TOKEN = '^[A-Za-z0-9_-]+$';
 
 /**

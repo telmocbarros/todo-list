@@ -229,6 +229,42 @@ describe('TodoService', () => {
       expect((await clocked.update(ada, todo.id, { completed: false, completedAt: null })).completedAt).toBeNull();
     });
 
+    it('lists only todos that are not completed as active', async () => {
+      const open = await clocked.create(ada, { title: 'open' });
+      const done = await clocked.create(ada, { title: 'done' });
+      await clocked.update(ada, done.id, { completed: true });
+      expect((await clocked.list(ada)).map((t) => t.id)).toEqual([open.id]);
+    });
+
+    it('pages through the history, newest first, with an opaque cursor', async () => {
+      const titles = ['a', 'b', 'c'];
+      for (const [hour, title] of titles.entries()) {
+        const todo = await clocked.create(ada, { title });
+        at(`2030-01-01T0${hour + 1}:00:00.000Z`);
+        await clocked.update(ada, todo.id, { completed: true });
+      }
+
+      const first = await clocked.history(ada, { limit: 2 });
+      expect(first.items.map((t) => t.title)).toEqual(['c', 'b']);
+      expect(first.nextCursor).toEqual(expect.any(String));
+
+      const second = await clocked.history(ada, { limit: 2, cursor: first.nextCursor ?? undefined });
+      expect(second.items.map((t) => t.title)).toEqual(['a']);
+      expect(second.nextCursor).toBeNull();
+    });
+
+    it('has no next cursor when the history fits exactly in one page', async () => {
+      const todo = await clocked.create(ada, { title: 'a' });
+      await clocked.update(ada, todo.id, { completed: true });
+      expect((await clocked.history(ada, { limit: 1 })).nextCursor).toBeNull();
+    });
+
+    it('rejects a cursor it did not issue', async () => {
+      for (const cursor of ['nonsense', Buffer.from('{"x":1}').toString('base64url')]) {
+        await expect(clocked.history(ada, { limit: 2, cursor })).rejects.toBeInstanceOf(ValidationError);
+      }
+    });
+
     it('refuses to complete a todo and clear its stamp in one go', async () => {
       const todo = await clocked.create(ada, { title: 'a' });
       await expect(
