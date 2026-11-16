@@ -17,6 +17,7 @@ const todo = (overrides: Partial<TodoModel> = {}): TodoModel => ({
   title: 'Persisted',
   description: '',
   completed: false,
+  completedAt: null,
   priority: 'medium',
   labelIds: [],
   dueDate: null,

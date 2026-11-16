@@ -73,6 +73,8 @@ export const todos = sqliteTable('todos', {
   title: text('title').notNull(),
   description: text('description').notNull(),
   completed: integer('completed', { mode: 'boolean' }).notNull(),
+  // When the todo was last completed; kept on reopening, so it stays in the history until cleared
+  completedAt: text('completed_at'),
   priority: text('priority').$type<TPriority>().notNull(),
   dueDate: text('due_date'),
   createdAt: text('created_at').notNull(),

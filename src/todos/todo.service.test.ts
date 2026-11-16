@@ -3,10 +3,12 @@ import { NotFoundError, ValidationError } from '../errors.js';
 import type { ILabelRepository } from '../labels/label.repository.js';
 import { createTestDependencies } from '../test/dependencies.js';
 import { createTestUser } from '../test/users.js';
+import type { ITodoRepository } from './todo.repository.js';
 import { TodoService } from './todo.service.js';
 
 describe('TodoService', () => {
   let service: TodoService;
+  let todos: ITodoRepository;
   let labels: ILabelRepository;
   let ada: string;
   let bob: string;
@@ -14,6 +16,7 @@ describe('TodoService', () => {
 
   beforeEach(async () => {
     const { todoRepository, labelRepository, userRepository, close } = await createTestDependencies();
+    todos = todoRepository;
     labels = labelRepository;
     closeDatabase = close;
     service = new TodoService(todoRepository, labels);
@@ -172,6 +175,65 @@ describe('TodoService', () => {
       await expect(service.create(ada, { title: 'a', labelIds: ['nope'] })).rejects.toBeInstanceOf(ValidationError);
       const created = await service.create(ada, { title: 'a' });
       await expect(service.update(ada, created.id, { labelIds: ['nope'] })).rejects.toBeInstanceOf(ValidationError);
+    });
+  });
+
+  describe('completion history', () => {
+    let now: Date;
+    let clocked: TodoService;
+    const at = (iso: string) => (now = new Date(iso));
+
+    beforeEach(() => {
+      now = new Date('2030-01-01T00:00:00.000Z');
+      clocked = new TodoService(todos, labels, { now: () => now });
+    });
+
+    it('starts with no completedAt', async () => {
+      expect((await clocked.create(ada, { title: 'a' })).completedAt).toBeNull();
+    });
+
+    it('stamps completedAt when a todo is completed', async () => {
+      const todo = await clocked.create(ada, { title: 'a' });
+      at('2030-01-02T00:00:00.000Z');
+      expect(await clocked.update(ada, todo.id, { completed: true })).toMatchObject({
+        completed: true,
+        completedAt: '2030-01-02T00:00:00.000Z',
+      });
+    });
+
+    it('keeps the first stamp when an already completed todo is completed or edited again', async () => {
+      const todo = await clocked.create(ada, { title: 'a' });
+      await clocked.update(ada, todo.id, { completed: true });
+      at('2030-01-02T00:00:00.000Z');
+      await clocked.update(ada, todo.id, { completed: true });
+      expect((await clocked.update(ada, todo.id, { title: 'b' })).completedAt).toBe('2030-01-01T00:00:00.000Z');
+    });
+
+    it('leaves completedAt when reopened, and stamps it anew when completed again', async () => {
+      const todo = await clocked.create(ada, { title: 'a' });
+      await clocked.update(ada, todo.id, { completed: true });
+      at('2030-01-02T00:00:00.000Z');
+      expect(await clocked.update(ada, todo.id, { completed: false })).toMatchObject({
+        completed: false,
+        completedAt: '2030-01-01T00:00:00.000Z',
+      });
+      at('2030-01-03T00:00:00.000Z');
+      expect((await clocked.update(ada, todo.id, { completed: true })).completedAt).toBe('2030-01-03T00:00:00.000Z');
+    });
+
+    it('clears completedAt only when asked, on a todo that is not completed', async () => {
+      const todo = await clocked.create(ada, { title: 'a' });
+      await clocked.update(ada, todo.id, { completed: true });
+      await expect(clocked.update(ada, todo.id, { completedAt: null })).rejects.toBeInstanceOf(ValidationError);
+
+      expect((await clocked.update(ada, todo.id, { completed: false, completedAt: null })).completedAt).toBeNull();
+    });
+
+    it('refuses to complete a todo and clear its stamp in one go', async () => {
+      const todo = await clocked.create(ada, { title: 'a' });
+      await expect(
+        clocked.update(ada, todo.id, { completed: true, completedAt: null }),
+      ).rejects.toBeInstanceOf(ValidationError);
     });
   });
 

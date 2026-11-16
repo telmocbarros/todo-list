@@ -125,7 +125,7 @@ Completing a todo moves it out of the active list into a history you can look ba
 
 **Schema**
 
-- [ ] Add `completed_at`, a nullable timestamp, alongside the existing `completed` boolean. The boolean is the current state; the timestamp records when the todo was last completed.
+- [x] Add `completed_at`, a nullable timestamp, alongside the existing `completed` boolean. The boolean is the current state; the timestamp records when the todo was last completed. Todos already completed were backfilled from `updated_at`.
 
 The two are deliberately not the same thing. Completing a todo sets `completed_at`, and **reopening it does not clear that timestamp** — a todo that was finished once stays in the history of previously completed tasks. Clearing it is a separate, explicit action.
 
@@ -133,8 +133,8 @@ The two are deliberately not the same thing. Completing a todo sets `completed_a
 
 - [ ] `GET /todos` returns only active todos (`completed = false`).
 - [ ] `GET /todos/history` returns everything with a `completed_at`, newest first.
-- [ ] Reopening (`PATCH { completed: false }`) returns a todo to the active list and leaves `completed_at` intact, so a reopened todo appears in both lists.
-- [ ] Clearing the history mark is deliberate: `PATCH { completedAt: null }`, never a side effect of reopening.
+- [x] Reopening (`PATCH { completed: false }`) returns a todo to the active list and leaves `completed_at` intact, so a reopened todo appears in both lists.
+- [x] Clearing the history mark is deliberate: `PATCH { completedAt: null }`, never a side effect of reopening. It is refused (400) while the todo is completed, so a completed todo always has a `completed_at`. Completing an already completed todo keeps the first stamp; completing a reopened one stamps it anew.
 
 **Work**
 

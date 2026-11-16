@@ -11,6 +11,7 @@ const buildTodo = (overrides: Partial<TodoModel> = {}): TodoModel => ({
   title: 'Buy milk',
   description: '',
   completed: false,
+  completedAt: null,
   priority: 'low',
   labelIds: [],
   dueDate: null,
@@ -44,6 +45,7 @@ describe('ITodoRepository', () => {
     const todo = buildTodo({
       description: 'Café ☕ 👨‍👩‍👧‍👦',
       completed: true,
+      completedAt: '2030-01-01T06:00:00.000Z',
       priority: 'high',
       labelIds: ['l1'],
       dueDate: '2030-06-01T12:00:00.000Z',

@@ -49,6 +49,31 @@ describe('todo API', () => {
     expect(res.json()).toMatchObject({ id, completed: true });
   });
 
+  describe('completedAt', () => {
+    const patch = (id: string, payload: object) => api({ method: 'PATCH', url: `/todos/${id}`, payload });
+
+    it('is set on completion, kept on reopening, and cleared only when asked', async () => {
+      const { id, completedAt } = (await create({ title: 'a' })).json();
+      expect(completedAt).toBeNull();
+
+      const stamp = (await patch(id, { completed: true })).json().completedAt;
+      expect(stamp).toEqual(expect.any(String));
+      expect((await patch(id, { completed: false })).json().completedAt).toBe(stamp);
+      expect((await patch(id, { completedAt: null })).json().completedAt).toBeNull();
+    });
+
+    it('cannot be cleared while the todo is completed (400)', async () => {
+      const { id } = (await create({ title: 'a' })).json();
+      await patch(id, { completed: true });
+      expect((await patch(id, { completedAt: null })).statusCode).toBe(400);
+    });
+
+    it('cannot be set by the client (400)', async () => {
+      const { id } = (await create({ title: 'a' })).json();
+      expect((await patch(id, { completedAt: '2030-01-01T00:00:00.000Z' })).statusCode).toBe(400);
+    });
+  });
+
   it('DELETE /todos/:id returns 204, then 404', async () => {
     const { id } = (await create({ title: 'a' })).json();
     expect((await api({ method: 'DELETE', url: `/todos/${id}` })).statusCode).toBe(204);

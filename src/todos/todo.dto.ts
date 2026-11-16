@@ -5,4 +5,7 @@ export type CreateTodoDTO = Pick<TodoModel, 'title'> &
 
 export type UpdateTodoDTO = Partial<
   Pick<TodoModel, 'title' | 'description' | 'completed' | 'priority' | 'labelIds' | 'dueDate'>
->;
+> & {
+  /** Only `null` is accepted: it removes the todo from the history. The stamp itself is set by completing. */
+  completedAt?: null;
+};

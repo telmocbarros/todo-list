@@ -20,8 +20,13 @@ const createProperties = {
   dueDate,
 } as const;
 
-// New todos always start incomplete, so `completed` can only be changed afterwards
-const patchProperties = { ...createProperties, completed: { type: 'boolean' } } as const;
+// New todos always start incomplete, so `completed` can only be changed afterwards.
+// `completedAt` can only be cleared; completing a todo is what sets it.
+const patchProperties = {
+  ...createProperties,
+  completed: { type: 'boolean' },
+  completedAt: { type: 'null' },
+} as const;
 
 export const registerTodoRoutes = (
   app: FastifyInstance,

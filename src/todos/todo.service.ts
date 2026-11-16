@@ -10,15 +10,38 @@ import type { ITodoRepository } from './todo.repository.js';
 const normalizeDate = (date: string | null | undefined): string | null =>
   date ? new Date(date).toISOString() : null;
 
+export interface ITodoServiceOptions {
+  now?: () => Date;
+}
+
 /**
  * Every method acts on behalf of one user, `userId`. Another user's todo is reported as not found,
  * so the API never reveals which ids exist.
  */
 export class TodoService {
+  private readonly now: () => Date;
+
   constructor(
     private readonly repository: ITodoRepository,
     private readonly labels: ILabelRepository,
-  ) {}
+    { now = () => new Date() }: ITodoServiceOptions = {},
+  ) {
+    this.now = now;
+  }
+
+  /**
+   * Completing stamps `completedAt`; completing an already completed todo keeps the first stamp.
+   * Reopening leaves it, so the todo stays in the history. Clearing it is a separate, explicit request,
+   * and only for a todo that is not completed: a completed todo is always in the history.
+   */
+  private completedAt(existing: TodoModel, patch: UpdateTodoDTO, now: string): string | null {
+    const completed = patch.completed ?? existing.completed;
+    if (patch.completedAt === null) {
+      if (completed) throw new ValidationError('Reopen the todo before removing it from the history');
+      return null;
+    }
+    return completed && !existing.completed ? now : existing.completedAt;
+  }
 
   /** Only the user's own labels count: another user's label id is as unknown as a made-up one. */
   private async resolveLabelIds(userId: string, labelIds: string[]): Promise<string[]> {
@@ -44,12 +67,13 @@ export class TodoService {
     { title, description = '', priority = DEFAULT_PRIORITY, labelIds = [], dueDate }: CreateTodoDTO,
   ): Promise<TodoModel> {
     const resolvedLabelIds = await this.resolveLabelIds(userId, labelIds);
-    const now = new Date().toISOString();
+    const now = this.now().toISOString();
     return this.repository.save(userId, {
       id: randomUUID(),
       title: cleanText(title),
       description: normalizeText(description),
       completed: false,
+      completedAt: null,
       priority,
       labelIds: resolvedLabelIds,
       dueDate: normalizeDate(dueDate),
@@ -63,6 +87,7 @@ export class TodoService {
     const title = patch.title && cleanText(patch.title);
     const description = patch.description && normalizeText(patch.description);
     const labelIds = patch.labelIds && (await this.resolveLabelIds(userId, patch.labelIds));
+    const now = this.now().toISOString();
     return this.repository.save(userId, {
       ...existing,
       ...patch,
@@ -70,7 +95,8 @@ export class TodoService {
       ...(description !== undefined && { description }),
       ...(labelIds !== undefined && { labelIds }),
       ...(patch.dueDate !== undefined && { dueDate: normalizeDate(patch.dueDate) }),
-      updatedAt: new Date().toISOString(),
+      completedAt: this.completedAt(existing, patch, now),
+      updatedAt: now,
     });
   }
 
