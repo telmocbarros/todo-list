@@ -54,4 +54,9 @@ export class EmailTokenService {
     if (!(await this.repository.markUsed(stored.id, now.toISOString()))) return undefined;
     return stored.userId;
   }
+
+  /** Deletes tokens that can no longer be used, so the table does not grow forever. Returns how many. */
+  async deleteSpent(): Promise<number> {
+    return this.repository.deleteSpent(this.now().toISOString());
+  }
 }

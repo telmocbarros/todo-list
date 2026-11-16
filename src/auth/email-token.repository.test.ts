@@ -57,6 +57,20 @@ describe('EmailTokenRepository', () => {
     expect(await tokens.findByHash('verify', 'h-other')).toBeDefined();
   });
 
+  it('deletes used and expired tokens, keeping those that still work', async () => {
+    await tokens.save(token({ id: 'used', tokenHash: 'h-used', usedAt: '2030-01-01T01:00:00.000Z' }));
+    await tokens.save(token({ id: 'expired', tokenHash: 'h-expired', expiresAt: '2030-01-01T12:00:00.000Z' }));
+    await tokens.save(token({ id: 'expiring', tokenHash: 'h-expiring', expiresAt: '2030-01-01T13:00:00.000Z' }));
+    await tokens.save(token({ id: 'live', tokenHash: 'h-live' }));
+
+    expect(await tokens.deleteSpent('2030-01-01T13:00:00.000Z')).toBe(3);
+
+    expect(await tokens.findByHash('verify', 'h-used')).toBeUndefined();
+    expect(await tokens.findByHash('verify', 'h-expired')).toBeUndefined();
+    expect(await tokens.findByHash('verify', 'h-expiring')).toBeUndefined();
+    expect(await tokens.findByHash('verify', 'h-live')).toBeDefined();
+  });
+
   it('rejects a token for a user that does not exist', async () => {
     await expect(tokens.save(token({ userId: 'ghost' }))).rejects.toThrow();
   });

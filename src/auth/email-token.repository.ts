@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import type { TDatabase } from '../db/client.js';
 import { emailTokens } from '../db/schema.js';
 import type { EmailTokenModel, TEmailTokenType } from './email-token.model.js';
@@ -10,6 +10,8 @@ export interface IEmailTokenRepository {
   markUsed(id: string, usedAt: string): Promise<boolean>;
   /** Deletes a user's unused tokens of one type, so only the newest link works. */
   deleteUnused(userId: string, type: TEmailTokenType): Promise<void>;
+  /** Deletes tokens that can no longer be used (used, or expired at `now`), returning how many. */
+  deleteSpent(now: string): Promise<number>;
 }
 
 export class EmailTokenRepository implements IEmailTokenRepository {
@@ -41,5 +43,14 @@ export class EmailTokenRepository implements IEmailTokenRepository {
     await this.db
       .delete(emailTokens)
       .where(and(eq(emailTokens.userId, userId), eq(emailTokens.type, type), isNull(emailTokens.usedAt)));
+  }
+
+  async deleteSpent(now: string): Promise<number> {
+    // ISO timestamps in UTC compare correctly as text
+    const deleted = await this.db
+      .delete(emailTokens)
+      .where(or(isNotNull(emailTokens.usedAt), lte(emailTokens.expiresAt, now)))
+      .returning({ id: emailTokens.id });
+    return deleted.length;
   }
 }

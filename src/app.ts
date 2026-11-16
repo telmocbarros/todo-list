@@ -12,6 +12,7 @@ import type { TRateLimiterKind } from './config.js';
 import { createCrossSiteWriteGuard } from './csrf.js';
 import { AccountEmails } from './email/account-emails.js';
 import { type IEmailSender, sendInBackground } from './email/email-sender.js';
+import { runPeriodically } from './jobs/run-periodically.js';
 import {
   ConflictError,
   ForbiddenError,
@@ -61,6 +62,8 @@ export interface IAppOptions {
   rateLimiter?: TRateLimiterKind;
   /** Where the web UI lives, for the links in emails. */
   appUrl?: string;
+  /** How often to delete used and expired email tokens, starting once the app is ready. Off when omitted. */
+  cleanupIntervalMs?: number;
 }
 
 export const buildApp = (
@@ -78,6 +81,7 @@ export const buildApp = (
     allowedOrigins = [],
     rateLimiter = 'plugin',
     appUrl = 'http://localhost:3000',
+    cleanupIntervalMs,
   }: IAppOptions = {},
 ): FastifyInstance => {
   const app = Fastify({ logger: true, trustProxy, bodyLimit: LIMITS.bodyBytes, ...(https && { https }) });
@@ -103,6 +107,21 @@ export const buildApp = (
   const tokens = new EmailTokenService(emailTokenRepository);
   const users = new UserService(userRepository, hasher, tokens, emails);
   const resets = new PasswordResetService(userRepository, sessionRepository, hasher, tokens, emails);
+
+  if (cleanupIntervalMs) {
+    let stopCleanup = () => {};
+    app.addHook('onReady', async () => {
+      stopCleanup = runPeriodically(
+        async () => {
+          const deleted = await tokens.deleteSpent();
+          if (deleted > 0) app.log.info({ deleted }, 'Deleted spent email tokens');
+        },
+        cleanupIntervalMs,
+        (err) => app.log.error({ err }, 'Token cleanup failed'),
+      );
+    });
+    app.addHook('onClose', async () => stopCleanup());
+  }
 
   // Routes go in a plugin, so they load after the plugins above; the rate-limit plugin
   // can only attach to routes added once it has loaded

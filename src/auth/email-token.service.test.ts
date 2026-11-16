@@ -68,4 +68,16 @@ describe('EmailTokenService', () => {
     expect(await tokens.consume('verify', old)).toBeUndefined();
     expect(await tokens.consume('verify', fresh)).toBe('u1');
   });
+
+  it('deletes used and expired tokens as of now, keeping working ones', async () => {
+    const used = await tokens.issue('u1', 'verify');
+    await tokens.consume('verify', used);
+    const reset = await tokens.issue('u1', 'reset');
+    later(HOUR);
+    const working = await tokens.issue('u1', 'verify');
+
+    expect(await tokens.deleteSpent()).toBe(2);
+    expect(await repository.findByHash('reset', sha256(reset))).toBeUndefined();
+    expect(await tokens.consume('verify', working)).toBe('u1');
+  });
 });

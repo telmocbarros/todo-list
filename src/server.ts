@@ -27,6 +27,7 @@ const app = buildApp(
     allowedOrigins,
     rateLimiter,
     appUrl,
+    cleanupIntervalMs: 60 * 60 * 1000,
     https: tls && { key: readFileSync(tls.keyPath), cert: readFileSync(tls.certPath) },
   },
 );
